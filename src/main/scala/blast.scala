@@ -31,6 +31,7 @@ case object blast {
         success(fullName + " is installed")
       else
         failure("Something went wrong with the linking :(")
+
     }
 
   }
