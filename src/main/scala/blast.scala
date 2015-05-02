@@ -1,6 +1,8 @@
-package ohnosequences-bundles.statika
+package ohnosequencesBundles.statika
 
 import ohnosequences.statika._, bundles._, instructions._
+import ohnosequences.awstools.regions.Region._
+import ohnosequences.cosas.typeSets._
 
 
 case object blast {
