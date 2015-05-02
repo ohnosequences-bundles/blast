@@ -1,4 +1,4 @@
-package ohnosequences-bundles.statika
+package ohnosequencesBundles.statika
 
 import ohnosequences.statika._, bundles._, instructions._
 
@@ -9,7 +9,7 @@ case object blast {
 
     def install: Results = {
       // do someting here
-      success(fullName + " is installed")
+      success(bundleFullName + " is installed")
     }
   }
 
