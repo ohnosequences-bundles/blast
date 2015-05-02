@@ -8,6 +8,10 @@ scalaVersion := "2.11.6"
 
 resolvers += "Era7 maven releases" at "https://s3-eu-west-1.amazonaws.com/releases.era7.com"
 
-libraryDependencies += "ohnosequences" %% "statika" % "2.0.0-M1"
 
 publishBucketSuffix := "era7.com"
+
+libraryDependencies ++= Seq(
+  "ohnosequences" %% "statika" % "2.0.0-M1",
+  "com.lihaoyi"   %% "ammonite-ops" % "0.2.7"
+)
