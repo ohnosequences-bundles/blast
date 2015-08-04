@@ -9,7 +9,8 @@ abstract class Blast(val version: String) extends Bundle { blast =>
 
   // 2.2.30+
   val tarball = s"ncbi-blast-${blast.version}-x64-linux.tar.gz"
-  val folder = s"ncbi-blast-${blast.version}"
+  val folder  = s"ncbi-blast-${blast.version}"
+
   val binaries = List(
     "blastdb_aliastool",
     "blastdbcheck",
@@ -57,9 +58,7 @@ abstract class Blast(val version: String) extends Bundle { blast =>
     )
   }
 
-  def install: Results = getTarball ->- extractTarball ->- linkBinaries.foldLeft[Results](
-    Seq("echo", "linking BLAST binaries")
-  )(
-    (acc, cmd) => acc ->- cmd
-  ) ->- success(s"${bundleFullName} installed")
+  def install: Results = getTarball ->- extractTarball ->-
+    linkBinaries.foldLeft[Results](Seq("echo", "linking BLAST binaries"))( (acc, cmd) => acc ->- cmd ) ->-
+    success(s"${bundleFullName} installed")
 }
