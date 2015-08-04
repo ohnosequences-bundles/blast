@@ -1,0 +1,3 @@
+# Blast 0.1.0
+
+This has a correct install method, assuming the corresponding `tar.gz` file is where it should. We will have a minimal API for building BLAST commands in the next version.
