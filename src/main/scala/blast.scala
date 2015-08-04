@@ -37,11 +37,8 @@ abstract class Blast(val version: String) extends Bundle { blast =>
   )
 
   lazy val getTarball = Seq(
-    "aws",
-    "s3",
-    "cp",
-    s"http://s3-eu-west-1.amazonaws.com/resources.ohnosequences.com/blast/${blast.version}/${blast.tarball}",
-    "."
+    "wget",
+    s"https://s3-eu-west-1.amazonaws.com/resources.ohnosequences.com/blast/${blast.version}/${blast.tarball}"
   )
 
   lazy val extractTarball = Seq(
@@ -61,4 +58,32 @@ abstract class Blast(val version: String) extends Bundle { blast =>
   def install: Results = getTarball ->- extractTarball ->-
     linkBinaries.foldLeft[Results](Seq("echo", "linking BLAST binaries"))( (acc, cmd) => acc ->- cmd ) ->-
     success(s"${bundleFullName} installed")
+}
+
+object blastAPI {
+
+  trait AnyBlastCommand {  val name: String  }
+  abstract class BlastCommand(val name: String) extends AnyBlastCommand
+  case object blastn        extends BlastCommand("blastn");   type blastn = blastn.type
+  case object blastp        extends BlastCommand("blastp");   type blastp = blastp.type
+  case object blastx        extends BlastCommand("blastp")
+  case object tblastn       extends BlastCommand("blastp")
+  case object tblastx       extends BlastCommand("blastp")
+  case object makeblastdb   extends BlastCommand("makeblastdb")
+
+  trait AnyBlastOption {  def toSeq: Seq[String]  }
+  abstract class BlastOption(val toSeq: Seq[String]) extends AnyBlastOption
+  case class numThreads(val number: Int)    extends BlastOption( Seq("-num_threads", s"${number}") )
+  case class db(val file: File)             extends BlastOption( Seq("-db", file.getCanonicalPath().toString) )
+  case class query(val file: File)          extends BlastOption( Seq("-query", file.getCanonicalPath().toString) )
+  case class out(val file: File)            extends BlastOption( Seq("-out", file.getCanonicalPath().toString) )
+  case class evalue(val number: Long)       extends BlastOption( Seq("-evalue", number.toString) )
+  case class maxTargetSeqs(val number: Int) extends BlastOption( Seq("-max_target_seqs", s"${number}") )
+
+  case class blastCmd(val cmd: AnyBlastCommand, val opts: List[AnyBlastOption])
+
+  // TODO: something like this with HList-like cmd type etc
+  implicit val numThreadsBlastn: numThreads optionOf blastn = optionOf()
+  implicit val numThreadsBlastp: numThreads optionOf blastp = optionOf()
+  case class optionOf[BO <: AnyBlastOption, BC <: AnyBlastCommand]()
 }
