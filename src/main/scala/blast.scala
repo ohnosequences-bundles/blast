@@ -62,6 +62,9 @@ abstract class Blast(val version: String) extends Bundle { blast =>
 
 object blastAPI {
 
+  import ohnosequences.cosas.properties._
+  import ohnosequences.cosas.typeSets._
+
   trait AnyBlastCommand {  val name: String  }
   abstract class BlastCommand(val name: String) extends AnyBlastCommand
   case object blastn        extends BlastCommand("blastn");   type blastn = blastn.type
@@ -71,10 +74,26 @@ object blastAPI {
   case object tblastx       extends BlastCommand("blastp")
   case object makeblastdb   extends BlastCommand("makeblastdb")
 
-  sealed trait AnyBlastOption {  def toSeq: Seq[String]  }
+  /*
+    Extending this trait marks an option as being valid for that command
+  */
+  trait AnyValidFor {
+    type Commands <: AnyTypeSet.Of[AnyBlastCommand]
+  }
+
+  trait ValidFor[Cmmnds <: AnyTypeSet.Of[AnyBlastCommand]] extends AnyValidFor {
+    type Commands = Cmmnds
+  }
+  sealed trait AnyBlastOption {
+
+    def toSeq: Seq[String]
+  }
   abstract class BlastOption(val toSeq: Seq[String]) extends AnyBlastOption
-  case class numThreads(val number: Int)    extends BlastOption( Seq("-num_threads", s"${number}") )
-  case class db(val file: File)             extends BlastOption( Seq("-db", file.getCanonicalPath().toString) )
+
+  case class numThreads(val number: Int)    extends BlastOption( Seq("-num_threads", s"${number}") ) with
+    ValidFor[blastn :~: blastp :~: ∅]
+  case class db(val file: File)             extends BlastOption( Seq("-db", file.getCanonicalPath().toString) ) with
+    ValidFor[blastn :~: blastp :~: ∅]
   case class query(val file: File)          extends BlastOption( Seq("-query", file.getCanonicalPath().toString) )
   case class out(val file: File)            extends BlastOption( Seq("-out", file.getCanonicalPath().toString) )
   case class evalue(val number: Double)     extends BlastOption( Seq("-evalue", number.toString) )
@@ -110,9 +129,6 @@ object blastAPI {
 
     lazy val blastRep: String = this.toString
   }
-
-  import ohnosequences.cosas.properties._
-  import ohnosequences.cosas.typeSets._
 
   trait AnyOutputRecordFormat {
 
