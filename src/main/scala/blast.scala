@@ -74,26 +74,17 @@ object blastAPI {
   case object tblastx       extends BlastCommand("blastp")
   case object makeblastdb   extends BlastCommand("makeblastdb")
 
-  /*
-    Extending this trait marks an option as being valid for that command
-  */
-  trait AnyValidFor {
-    type Commands <: AnyTypeSet.Of[AnyBlastCommand]
-  }
-
-  trait ValidFor[Cmmnds <: AnyTypeSet.Of[AnyBlastCommand]] extends AnyValidFor {
-    type Commands = Cmmnds
-  }
   sealed trait AnyBlastOption {
+
+    type Commands <: AnyTypeSet.Of[AnyBlastCommand]
+    // val commands: Commands
 
     def toSeq: Seq[String]
   }
   abstract class BlastOption(val toSeq: Seq[String]) extends AnyBlastOption
 
-  case class numThreads(val number: Int)    extends BlastOption( Seq("-num_threads", s"${number}") ) with
-    ValidFor[blastn :~: blastp :~: ∅]
-  case class db(val file: File)             extends BlastOption( Seq("-db", file.getCanonicalPath().toString) ) with
-    ValidFor[blastn :~: blastp :~: ∅]
+  case class numThreads(val number: Int)    extends BlastOption( Seq("-num_threads", s"${number}") )
+  case class db(val file: File)             extends BlastOption( Seq("-db", file.getCanonicalPath().toString) )
   case class query(val file: File)          extends BlastOption( Seq("-query", file.getCanonicalPath().toString) )
   case class out(val file: File)            extends BlastOption( Seq("-out", file.getCanonicalPath().toString) )
   case class evalue(val number: Double)     extends BlastOption( Seq("-evalue", number.toString) )
