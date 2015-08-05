@@ -237,15 +237,12 @@ object blastAPI {
   }
 
   import out._
-  val defaultOutputFormat = OutputRecordFormat(qseqid :~: sseqid :~: pident :~: length :~: mismatch :~: gapopen :~: qstart :~: qend :~: sstart :~: send :~: out.evalue :~: bitscore :~: ∅)
+  val defaultOutputFormat = OutputRecordFormat(
+    qseqid :~: sseqid :~: pident :~: length :~: mismatch :~: gapopen :~: qstart :~: qend :~: sstart :~: send :~: out.evalue :~: bitscore :~: ∅
+  )
 
   case class blastCmd(val cmd: AnyBlastCommand, val opts: List[AnyBlastOption]) {
 
     def toSeq: Seq[String] = Seq(cmd.name) ++ (opts flatMap { _.toSeq } )
   }
-
-  // TODO: something like this with HList-like cmd type etc
-  implicit val numThreadsBlastn: numThreads optionOf blastn = optionOf()
-  implicit val numThreadsBlastp: numThreads optionOf blastp = optionOf()
-  case class optionOf[BO <: AnyBlastOption, BC <: AnyBlastCommand]()
 }
