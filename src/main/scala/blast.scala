@@ -208,7 +208,7 @@ object blastAPI {
       type Commands <: AnyTypeSet.Of[AnyBlastCommand]
     }
     trait OutputField[V] extends AnyOutputField { type Raw = V }
-    trait ForCommands[Cmmnds <: AnyTypeSet.Of[AnyBlastCommand]]
+    trait ForCommands[Cmmnds <: AnyTypeSet.Of[AnyBlastCommand]] extends AnyOutputField { type Commands = Cmmnds }
 
     // means Query Seq-id
     case object qseqid    extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
@@ -301,6 +301,7 @@ object blastAPI {
   }
 
   import out._
+
   val defaultOutputFormat = OutputRecordFormat(
     qseqid :~: sseqid :~: pident :~: length :~: mismatch :~: gapopen :~: qstart :~: qend :~: sstart :~: send :~: out.evalue :~: bitscore :~: ∅
   )
@@ -309,6 +310,11 @@ object blastAPI {
   trait OptionFor[C <: AnyBlastCommand] extends TypePredicate[AnyBlastOption] {
 
     type Condition[O <: AnyBlastOption] = C isIn O#Commands
+  }
+
+  trait OutputFieldFor[C <: AnyBlastCommand] extends TypePredicate[out.AnyOutputField] {
+
+    type Condition[Flds <: out.AnyOutputField] = C isIn Flds#Commands
   }
 
   import ohnosequences.cosas.ops.typeSets.CheckForAll
@@ -321,10 +327,25 @@ object blastAPI {
     opts.checkForAll[OptionFor[C]]; opts
   }
 
+  def validOutputFormat[
+    C <: AnyBlastCommand,
+    Flds <: AnyTypeSet.Of[out.AnyOutputField]
+  ](cmd: C, flds: Flds)(implicit ev: CheckForAll[Flds, OutputFieldFor[C]]): Flds = {
+
+    flds.checkForAll[OutputFieldFor[C]]; flds
+  }
+
   val opts = validOptions(
     blastn,
     numThreads(12) :~: maxTargetSeqs(3232) :~: task.megablast :~: ∅
   )
+
+  val outFmt = validOutputFormat(
+    blastn,
+    qseqid :~: sseqid :~: pident :~: length :~: ∅
+  )
+
+  val defaultFields = validOutputFormat(blastn, defaultOutputFormat.fields)
 
   case class blastCmd(val cmd: AnyBlastCommand, val opts: List[AnyBlastOption]) {
 
