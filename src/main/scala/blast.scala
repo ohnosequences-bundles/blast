@@ -74,7 +74,8 @@ object blastAPI {
   case object tblastx       extends BlastCommand("blastp");   type tblastx  = tblastx.type
   case object makeblastdb   extends BlastCommand("makeblastdb"); type makeblastdb = makeblastdb.type
 
-  val allBlasts = blastn :~: blastp :~: blastx :~: tblastn :~: tblastx :~: ∅
+  type AllBlasts  = blastn :~: blastp :~: blastx :~: tblastn :~: tblastx :~: ∅
+  val allBlasts   = blastn :~: blastp :~: blastx :~: tblastn :~: tblastx :~: ∅
 
   sealed trait AnyBlastOption {
 
@@ -189,12 +190,6 @@ object blastAPI {
   }
 
 
-  // TODO fields for TSV and CSV
-  trait AnyOutputField {
-
-    lazy val blastRep: String = this.toString
-  }
-
   trait AnyOutputRecordFormat {
 
     type Fields <: AnyTypeSet.Of[out.AnyOutputField]
@@ -208,75 +203,79 @@ object blastAPI {
 
   object out {
 
-    trait AnyOutputField extends AnyProperty
+    trait AnyOutputField extends AnyProperty {
+
+      type Commands <: AnyTypeSet.Of[AnyBlastCommand]
+    }
     trait OutputField[V] extends AnyOutputField { type Raw = V }
+    trait ForCommands[Cmmnds <: AnyTypeSet.Of[AnyBlastCommand]]
 
     // means Query Seq-id
-    case object qseqid    extends OutputField[String]         { val label = toString }
+    case object qseqid    extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
     // means Query GI
-    case object qgi       extends OutputField[String]         { val label = toString }
+    case object qgi       extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
     // means Query accesion
-    case object qacc      extends OutputField[String]         { val label = toString }
+    case object qacc      extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
     // means Query accesion.version
-    case object qaccver   extends OutputField[Int]            { val label = toString }
+    case object qaccver   extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
     // means Query sequence length
-    case object qlen      extends OutputField[Int]            { val label = toString }
+    case object qlen      extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
     // means Subject Seq-id
-    case object sseqid    extends OutputField[String]         { val label = toString }
+    case object sseqid    extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
     // means All subject Seq-id(s), separated by a ';'
-    case object sallseqid extends OutputField[List[String]]   { val label = toString }
+    case object sallseqid extends OutputField[List[String]] with ForCommands[AllBlasts]   { val label = toString }
     // means Subject GI
-    case object sgi       extends OutputField[String]         { val label = toString }
+    case object sgi       extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
     // means All subject GIs
-    case object sallgi    extends OutputField[List[String]]   { val label = toString }
+    case object sallgi    extends OutputField[List[String]] with ForCommands[AllBlasts]   { val label = toString }
     // means Subject accession
-    case object sacc      extends OutputField[String]         { val label = toString }
+    case object sacc      extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
     // means Subject accession.version
-    case object saccver   extends OutputField[String]         { val label = toString }
+    case object saccver   extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
     // means All subject accessions
-    case object sallacc   extends OutputField[String]         { val label = toString }
+    case object sallacc   extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
     // means Subject sequence length
-    case object slen      extends OutputField[Int]            { val label = toString }
+    case object slen      extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
     // means Start of alignment in query
-    case object qstart    extends OutputField[Int]            { val label = toString }
+    case object qstart    extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
     // means End of alignment in query
-    case object qend      extends OutputField[Int]            { val label = toString }
+    case object qend      extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
     // means Start of alignment in subject
-    case object sstart    extends OutputField[Int]            { val label = toString }
+    case object sstart    extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
     // means End of alignment in subject
-    case object send      extends OutputField[Int]            { val label = toString }
+    case object send      extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
     // means Aligned part of query sequence
-    case object qseq      extends OutputField[String]         { val label = toString }
+    case object qseq      extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
     // means Aligned part of subject sequence
-    case object sseq      extends OutputField[String]         { val label = toString }
+    case object sseq      extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
     // means Expect value
-    case object evalue    extends OutputField[Double]         { val label = toString }
+    case object evalue    extends OutputField[Double] with ForCommands[AllBlasts]         { val label = toString }
     // means Bit score
-    case object bitscore  extends OutputField[Long]           { val label = toString }
+    case object bitscore  extends OutputField[Long] with ForCommands[AllBlasts]           { val label = toString }
     // means Raw score
-    case object score     extends OutputField[Long]           { val label = toString }
+    case object score     extends OutputField[Long] with ForCommands[AllBlasts]           { val label = toString }
     // means Alignment length
-    case object length    extends OutputField[Int]            { val label = toString }
+    case object length    extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
     // means Percentage of identical matches
-    case object pident    extends OutputField[Double]         { val label = toString }
+    case object pident    extends OutputField[Double] with ForCommands[AllBlasts]         { val label = toString }
     // case object nident extends OutputField[String]  { // means Number of identical matches
     // }
     // means Number of mismatches
-    case object mismatch  extends OutputField[Int]      { val label = toString }
+    case object mismatch  extends OutputField[Int] with ForCommands[AllBlasts]      { val label = toString }
     // means Number of positive-scoring matches
-    case object positive  extends OutputField[Int]      { val label = toString }
+    case object positive  extends OutputField[Int] with ForCommands[AllBlasts]      { val label = toString }
     // means Number of gap openings
-    case object gapopen   extends OutputField[Int]      { val label = toString }
+    case object gapopen   extends OutputField[Int] with ForCommands[AllBlasts]      { val label = toString }
     // means Total number of gaps
-    case object gaps      extends OutputField[Int]      { val label = toString }
+    case object gaps      extends OutputField[Int] with ForCommands[AllBlasts]      { val label = toString }
     // case object ppos extends OutputField[String]  { // means Percentage of positive-scoring matches
     // }
     // case object frames extends OutputField[String]  { // means Query and subject frames separated by a '/'
     // }
     // means Query frame
-    case object qframe      extends OutputField[String]   { val label = toString }
+    case object qframe      extends OutputField[String] with ForCommands[AllBlasts]   { val label = toString }
     // means Subject frame
-    case object sframe      extends OutputField[String]   { val label = toString }
+    case object sframe      extends OutputField[String] with ForCommands[AllBlasts]   { val label = toString }
     // case object btop extends OutputField[String]  { // means Blast traceback operations (BTOP)
     // }
     // case object staxids extends OutputField[String]  { // means unique Subject Taxonomy ID(s), separated by a ';' (in numerical order)
