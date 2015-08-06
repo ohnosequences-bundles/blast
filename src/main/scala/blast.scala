@@ -67,12 +67,14 @@ object blastAPI {
 
   trait AnyBlastCommand {  val name: String  }
   abstract class BlastCommand(val name: String) extends AnyBlastCommand
-  case object blastn        extends BlastCommand("blastn");   type blastn = blastn.type
-  case object blastp        extends BlastCommand("blastp");   type blastp = blastp.type
-  case object blastx        extends BlastCommand("blastp")
-  case object tblastn       extends BlastCommand("blastp")
-  case object tblastx       extends BlastCommand("blastp")
-  case object makeblastdb   extends BlastCommand("makeblastdb")
+  case object blastn        extends BlastCommand("blastn");   type blastn   = blastn.type
+  case object blastp        extends BlastCommand("blastp");   type blastp   = blastp.type
+  case object blastx        extends BlastCommand("blastp");   type blastx   = blastx.type
+  case object tblastn       extends BlastCommand("blastp");   type tblastn  = tblastn.type
+  case object tblastx       extends BlastCommand("blastp");   type tblastx  = tblastx.type
+  case object makeblastdb   extends BlastCommand("makeblastdb"); type makeblastdb = makeblastdb.type
+
+  val allBlasts = blastn :~: blastp :~: blastx :~: tblastn :~: tblastx :~: ∅
 
   sealed trait AnyBlastOption {
 
@@ -81,39 +83,111 @@ object blastAPI {
 
     def toSeq: Seq[String]
   }
-  abstract class BlastOption(val toSeq: Seq[String]) extends AnyBlastOption
+  abstract class BlastOption[Cmmnds <: AnyTypeSet.Of[AnyBlastCommand]](
+    val commands: Cmmnds,
+    val toSeq: Seq[String]
+  )
+  extends AnyBlastOption { type Commands = Cmmnds }
 
-  case class numThreads(val number: Int)    extends BlastOption( Seq("-num_threads", s"${number}") )
-  case class db(val file: File)             extends BlastOption( Seq("-db", file.getCanonicalPath().toString) )
-  case class query(val file: File)          extends BlastOption( Seq("-query", file.getCanonicalPath().toString) )
-  case class out(val file: File)            extends BlastOption( Seq("-out", file.getCanonicalPath().toString) )
-  case class evalue(val number: Double)     extends BlastOption( Seq("-evalue", number.toString) )
-  case class maxTargetSeqs(val number: Int) extends BlastOption( Seq("-max_target_seqs", s"${number}") )
-  case object showGis                       extends BlastOption( Seq("-show_gis") )
-  sealed trait BlastnTask extends AnyBlastOption
-  case object megablastTask                 extends BlastOption( Seq("-task", "megablast") ) with BlastnTask
-  case object dcMegablastTask               extends BlastOption( Seq("-task", "dc-megablast") ) with BlastnTask
-  case object blastnTask                    extends BlastOption( Seq("-task", "blastn") ) with BlastnTask
-  case object blastnShortTask               extends BlastOption( Seq("-task", "blastn-short") ) with BlastnTask
-  case object rmblastnTask                  extends BlastOption( Seq("-task", "rmblastn") ) with BlastnTask
+  case class numThreads(val number: Int)    extends BlastOption(
+    allBlasts,
+    Seq("-num_threads", s"${number}")
+  )
+  case class db(val file: File)             extends BlastOption(
+    allBlasts,
+    Seq("-db", file.getCanonicalPath().toString)
+  )
+  case class query(val file: File)          extends BlastOption(
+    allBlasts,
+    Seq("-query", file.getCanonicalPath().toString)
+  )
+  case class out(val file: File)            extends BlastOption(
+    makeblastdb :~: allBlasts,
+    Seq("-out", file.getCanonicalPath().toString)
+  )
+  case class evalue(val number: Double)     extends BlastOption(
+    allBlasts,
+    Seq("-evalue", number.toString)
+  )
+  case class maxTargetSeqs(val number: Int) extends BlastOption(
+    allBlasts,
+    Seq("-max_target_seqs", s"${number}")
+  )
+  case object showGis                       extends BlastOption(
+    allBlasts,
+    Seq("-show_gis")
+  )
+  sealed abstract class BlastTask[BC <: BlastCommand](bc: BC, toSeq: Seq[String]) extends BlastOption(
+    bc :~: ∅,
+    toSeq
+  )
 
-  case class outfmt(val number: Int)        extends BlastOption( Seq("-outfmt", s"${number}") )
+  case object task {
+
+    // TODO finish writing all tasks here
+    case object megablast                 extends BlastTask( blastAPI.blastn, Seq("-task", "megablast") )
+    case object dcMegablast               extends BlastTask( blastAPI.blastn, Seq("-task", "dc-megablast") )
+    case object blastn                    extends BlastTask( blastAPI.blastn, Seq("-task", "blastn") )
+    case object blastnShort               extends BlastTask( blastAPI.blastn, Seq("-task", "blastn-short") )
+    case object rmblastn                  extends BlastTask( blastAPI.blastn, Seq("-task", "rmblastn") )
+    case object blastp
+    case object blastpFast
+    case object blastpShort
+    case object blastx
+    case object blastxFast
+    case object tblastn
+    case object tblastnFast
+  }
+
+  sealed trait BlastDBInputType
+  object dbInputType {
+
+    case object asn1_bin  extends BlastDBInputType
+    case object asn1_txt  extends BlastDBInputType
+    case object blastdb   extends BlastDBInputType
+    case object fasta     extends BlastDBInputType
+  }
+
+  case class inputType(val tpe: BlastDBInputType) extends BlastOption(
+    makeblastdb :~: ∅,
+    Seq("-input_type", tpe.toString)
+  )
+
+  sealed trait BlastDBType
+  object dbType {
+    case object nucl extends BlastDBType
+    case object prot extends BlastDBType
+  }
+
+  case class dbtype(val tpe: BlastDBType) extends BlastOption(
+    makeblastdb :~: ∅,
+    Seq("-dbtype", tpe.toString)
+  )
+
+  case class title(val name: String) extends BlastOption(makeblastdb :~: ∅, Seq("-title", name))
+
+
+  case class outfmt(val number: Int)       extends BlastOption(allBlasts, Seq("-outfmt", s"${number}") )
   trait AnyOutputFormat extends AnyBlastOption { val code: Int }
   private def outfmtSeq(code: Int): Seq[String] = Seq("-outfmt", s"${code}")
   abstract class OutputFormat(val code: Int, val toSeq: Seq[String]) extends AnyOutputFormat
-  case object pairwiseOutputFormat                  extends OutputFormat(0,outfmtSeq(0))
-  case object queryAnchoredShowIdsOutputFormat      extends OutputFormat(1, outfmtSeq(1))
-  case object queryAnchoredNoIdsOutputFormat        extends OutputFormat(2, outfmtSeq(2))
-  case object flatQueryAnchoredShowIdsOutputFormat  extends OutputFormat(3, outfmtSeq(3))
-  case object flatQueryAnchoredNoIdsOutputFormat    extends OutputFormat(4, outfmtSeq(4))
-  case object XMLOutputFormat                       extends OutputFormat(5, outfmtSeq(5))
-  case object TSVOutputFormat                       extends OutputFormat(6, outfmtSeq(6))
-  case object TSVWithCommentsOutputFormat           extends OutputFormat(7, outfmtSeq(7))
-  case object TextASN1OutputFormat                  extends OutputFormat(8, outfmtSeq(8))
-  case object BinaryASN1OutputFormat                extends OutputFormat(9, outfmtSeq(9))
-  case object CSVOutputFormat                       extends OutputFormat(10, outfmtSeq(10))
-  case object BLASTArchiveASN1OutputFormat          extends OutputFormat(11, outfmtSeq(11))
-  case object JSONSeqalignOutputFormat              extends OutputFormat(12, outfmtSeq(12))
+  case object outputFormat {
+
+    case object pairwiseOutputFormat                  extends OutputFormat(0,outfmtSeq(0))
+    case object queryAnchoredShowIdsOutputFormat      extends OutputFormat(1, outfmtSeq(1))
+    case object queryAnchoredNoIdsOutputFormat        extends OutputFormat(2, outfmtSeq(2))
+    case object flatQueryAnchoredShowIdsOutputFormat  extends OutputFormat(3, outfmtSeq(3))
+    case object flatQueryAnchoredNoIdsOutputFormat    extends OutputFormat(4, outfmtSeq(4))
+    case object XMLOutputFormat                       extends OutputFormat(5, outfmtSeq(5))
+    case object TSVOutputFormat                       extends OutputFormat(6, outfmtSeq(6))
+    case object TSVWithCommentsOutputFormat           extends OutputFormat(7, outfmtSeq(7))
+    case object TextASN1OutputFormat                  extends OutputFormat(8, outfmtSeq(8))
+    case object BinaryASN1OutputFormat                extends OutputFormat(9, outfmtSeq(9))
+    case object CSVOutputFormat                       extends OutputFormat(10, outfmtSeq(10))
+    case object BLASTArchiveASN1OutputFormat          extends OutputFormat(11, outfmtSeq(11))
+    case object JSONSeqalignOutputFormat              extends OutputFormat(12, outfmtSeq(12))
+  }
+
 
   // TODO fields for TSV and CSV
   trait AnyOutputField {
@@ -230,6 +304,27 @@ object blastAPI {
   import out._
   val defaultOutputFormat = OutputRecordFormat(
     qseqid :~: sseqid :~: pident :~: length :~: mismatch :~: gapopen :~: qstart :~: qend :~: sstart :~: send :~: out.evalue :~: bitscore :~: ∅
+  )
+
+
+  trait OptionFor[C <: AnyBlastCommand] extends TypePredicate[AnyBlastOption] {
+
+    type Condition[O <: AnyBlastOption] = C isIn O#Commands
+  }
+
+  import ohnosequences.cosas.ops.typeSets.CheckForAll
+
+  def validOptions[
+    C <: AnyBlastCommand,
+    Opts <: AnyTypeSet.Of[AnyBlastOption]
+  ](cmd: C, opts: Opts)(implicit ev: CheckForAll[Opts, OptionFor[C]]): Opts = {
+
+    opts.checkForAll[OptionFor[C]]; opts
+  }
+
+  val opts = validOptions(
+    blastn,
+    numThreads(12) :~: maxTargetSeqs(3232) :~: task.megablast :~: ∅
   )
 
   case class blastCmd(val cmd: AnyBlastCommand, val opts: List[AnyBlastOption]) {
