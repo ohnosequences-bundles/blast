@@ -78,6 +78,35 @@ object blastAPI {
   type AllBlasts  = blastn :~: blastp :~: blastx :~: tblastn :~: tblastx :~: ∅
   val allBlasts   = blastn :~: blastp :~: blastx :~: tblastn :~: tblastx :~: ∅
 
+  sealed trait AnyCommandArguments {
+
+    type Command <: AnyBlastCommand
+    val command: Command
+
+    val toSeq: Seq[String]
+  }
+  abstract class CommandArguments[Cmmnd <: AnyBlastCommand](val command: Cmmnd, val toSeq: Seq[String])
+  extends AnyCommandArguments { type Command = Cmmnd }
+
+  // TODO should be argument
+  case class db(val file: File) {
+    val toSeq = Seq("-db", file.getCanonicalPath().toString)
+  }
+  // TODO should be argument
+  case class query(val file: File){
+    val toSeq = Seq("-query", file.getCanonicalPath().toString)
+  }
+  // TODO should be argument
+  case class out(val file: File){
+    val toSeq = Seq("-out", file.getCanonicalPath().toString)
+  }
+
+  case class arguments[X <: AnyBlastCommand : in[AllBlasts]#is](val cmd: X)(
+    val query: query,
+    val db: db,
+    val out: out
+  ) extends CommandArguments(cmd, query.toSeq ++ db.toSeq ++ out.toSeq)
+
   sealed trait AnyBlastOption {
 
     type Commands <: AnyTypeSet.Of[AnyBlastCommand]
@@ -95,18 +124,7 @@ object blastAPI {
     allBlasts,
     Seq("-num_threads", s"${number}")
   )
-  case class db(val file: File)             extends BlastOption(
-    allBlasts,
-    Seq("-db", file.getCanonicalPath().toString)
-  )
-  case class query(val file: File)          extends BlastOption(
-    allBlasts,
-    Seq("-query", file.getCanonicalPath().toString)
-  )
-  case class out(val file: File)            extends BlastOption(
-    makeblastdb :~: allBlasts,
-    Seq("-out", file.getCanonicalPath().toString)
-  )
+
   case class evalue(val number: Double)     extends BlastOption(
     allBlasts,
     Seq("-evalue", number.toString)
@@ -359,16 +377,16 @@ object blastAPI {
     Flds <: AnyTypeSet.Of[out.AnyOutputField]
   ](
     val command: Cmd,
+    val arguments: CommandArguments[Cmd],
     val options: WithOptions[Cmd,Opts],
     val outputFormat: WithOutputRecordFormat[Cmd,Flds]
   ) {
 
     import options._
     // TODO missing part about output format
-    def toSeq: Seq[String] = Seq(command.name) ++ ( (options.opts.toListOf[AnyBlastOption]) flatMap { _.toSeq } )
+    def toSeq: Seq[String] =  Seq(command.name) ++
+                              arguments.toSeq   ++
+                              ( (options.opts.toListOf[AnyBlastOption]) flatMap { _.toSeq } )
   }
-  case class blastCmd(val cmd: AnyBlastCommand, val opts: List[AnyBlastOption]) {
 
-    def toSeq: Seq[String] = Seq(cmd.name) ++ (opts flatMap { _.toSeq } )
-  }
 }
