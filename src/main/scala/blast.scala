@@ -335,20 +335,38 @@ object blastAPI {
     type Condition[O <: AnyBlastOption] = C isIn O#Commands
   }
 
-  import ohnosequences.cosas.ops.typeSets.CheckForAll
+  import ohnosequences.cosas.ops.typeSets.{CheckForAll, ToList }
 
   // TODO ops syntax
   case class WithOptions[
     C <: AnyBlastCommand,
     Opts <: AnyTypeSet.Of[AnyBlastOption]
-  ](val cmd: C, val opts: Opts)(implicit val ev: CheckForAll[Opts, OptionFor[C]])
+  ](val cmd: C, val opts: Opts)(implicit
+    val ev: CheckForAll[Opts, OptionFor[C]],
+    val toListEv: ToListOf[Opts, AnyBlastOption]
+  )
 
+  // TODO add a OutputFormat ADT with constructors for the other options
   case class WithOutputRecordFormat[
     C <: AnyBlastCommand,
     Flds <: AnyTypeSet.Of[out.AnyOutputField]
   ](val cmd: C, val flds: Flds)(implicit val ev: CheckForAll[Flds, OutputFieldFor[C]])
 
   // TODO update to the types above
+  case class BlastExec[
+    Cmd <: AnyBlastCommand,
+    Opts <: AnyTypeSet.Of[AnyBlastOption],
+    Flds <: AnyTypeSet.Of[out.AnyOutputField]
+  ](
+    val command: Cmd,
+    val options: WithOptions[Cmd,Opts],
+    val outputFormat: WithOutputRecordFormat[Cmd,Flds]
+  ) {
+
+    import options._
+    // TODO missing part about output format
+    def toSeq: Seq[String] = Seq(command.name) ++ ( (options.opts.toListOf[AnyBlastOption]) flatMap { _.toSeq } )
+  }
   case class blastCmd(val cmd: AnyBlastCommand, val opts: List[AnyBlastOption]) {
 
     def toSeq: Seq[String] = Seq(cmd.name) ++ (opts flatMap { _.toSeq } )
