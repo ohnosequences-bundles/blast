@@ -65,14 +65,15 @@ object blastAPI {
   import ohnosequences.cosas.properties._
   import ohnosequences.cosas.typeSets._
 
-  trait AnyBlastCommand {  val name: String  }
+  sealed trait AnyBlastCommand {  val name: String  }
   abstract class BlastCommand(val name: String) extends AnyBlastCommand
-  case object blastn        extends BlastCommand("blastn");   type blastn   = blastn.type
-  case object blastp        extends BlastCommand("blastp");   type blastp   = blastp.type
-  case object blastx        extends BlastCommand("blastp");   type blastx   = blastx.type
-  case object tblastn       extends BlastCommand("blastp");   type tblastn  = tblastn.type
-  case object tblastx       extends BlastCommand("blastp");   type tblastx  = tblastx.type
-  case object makeblastdb   extends BlastCommand("makeblastdb"); type makeblastdb = makeblastdb.type
+
+  case object blastn        extends BlastCommand("blastn");       type blastn   = blastn.type
+  case object blastp        extends BlastCommand("blastp");       type blastp   = blastp.type
+  case object blastx        extends BlastCommand("blastp");       type blastx   = blastx.type
+  case object tblastn       extends BlastCommand("blastp");       type tblastn  = tblastn.type
+  case object tblastx       extends BlastCommand("blastp");       type tblastx  = tblastx.type
+  case object makeblastdb   extends BlastCommand("makeblastdb");  type makeblastdb = makeblastdb.type
 
   type AllBlasts  = blastn :~: blastp :~: blastx :~: tblastn :~: tblastx :~: ∅
   val allBlasts   = blastn :~: blastp :~: blastx :~: tblastn :~: tblastx :~: ∅
@@ -80,7 +81,7 @@ object blastAPI {
   sealed trait AnyBlastOption {
 
     type Commands <: AnyTypeSet.Of[AnyBlastCommand]
-    // val commands: Commands
+    val commands: Commands
 
     def toSeq: Seq[String]
   }
@@ -118,26 +119,26 @@ object blastAPI {
     allBlasts,
     Seq("-show_gis")
   )
-  sealed abstract class BlastTask[BC <: BlastCommand](bc: BC, toSeq: Seq[String]) extends BlastOption(
+  sealed abstract class BlastTask[BC <: BlastCommand](bc: BC, taskName: String) extends BlastOption(
     bc :~: ∅,
-    toSeq
+    Seq("-task", taskName)
   )
 
   case object task {
 
     // TODO finish writing all tasks here
-    case object megablast                 extends BlastTask( blastAPI.blastn, Seq("-task", "megablast") )
-    case object dcMegablast               extends BlastTask( blastAPI.blastn, Seq("-task", "dc-megablast") )
-    case object blastn                    extends BlastTask( blastAPI.blastn, Seq("-task", "blastn") )
-    case object blastnShort               extends BlastTask( blastAPI.blastn, Seq("-task", "blastn-short") )
-    case object rmblastn                  extends BlastTask( blastAPI.blastn, Seq("-task", "rmblastn") )
-    case object blastp
-    case object blastpFast
-    case object blastpShort
-    case object blastx
-    case object blastxFast
-    case object tblastn
-    case object tblastnFast
+    case object megablast       extends BlastTask( blastAPI.blastn, "megablast" )
+    case object dcMegablast     extends BlastTask( blastAPI.blastn, "dc-megablast" )
+    case object blastn          extends BlastTask( blastAPI.blastn, "blastn" )
+    case object blastnShort     extends BlastTask( blastAPI.blastn, "blastn-short" )
+    case object rmblastn        extends BlastTask( blastAPI.blastn, "rmblastn" )
+    case object blastp          extends BlastTask( blastAPI.blastp, "blastp" )
+    case object blastpFast      extends BlastTask( blastAPI.blastp, "blastp-fast" )
+    case object blastpShort     extends BlastTask( blastAPI.blastp, "blastp-short" )
+    case object blastx          extends BlastTask( blastAPI.blastx, "blastx" )
+    case object blastxFast      extends BlastTask( blastAPI.blastx, "blastx-fast" )
+    case object tblastn         extends BlastTask( blastAPI.tblastn, "tblastn" )
+    case object tblastnFast     extends BlastTask( blastAPI.tblastn, "tblastn-fast" )
   }
 
   sealed trait BlastDBInputType
@@ -160,35 +161,40 @@ object blastAPI {
     case object prot extends BlastDBType
   }
 
-  case class dbtype(val tpe: BlastDBType) extends BlastOption(
+  case class dbtype(val tpe: BlastDBType)   extends BlastOption(
     makeblastdb :~: ∅,
     Seq("-dbtype", tpe.toString)
   )
+  case class title(val name: String)        extends BlastOption(makeblastdb :~: ∅, Seq("-title", name))
+  case class outfmt(val number: Int)        extends BlastOption(allBlasts, Seq("-outfmt", s"${number}") )
 
-  case class title(val name: String) extends BlastOption(makeblastdb :~: ∅, Seq("-title", name))
+  sealed trait AnyOutputFormat extends AnyBlastOption {
 
+    // TODO check it
+    type Commands = AllBlasts
+    val commands = allBlasts
 
-  case class outfmt(val number: Int)       extends BlastOption(allBlasts, Seq("-outfmt", s"${number}") )
-  trait AnyOutputFormat extends AnyBlastOption { val code: Int }
-  private def outfmtSeq(code: Int): Seq[String] = Seq("-outfmt", s"${code}")
-  abstract class OutputFormat(val code: Int, val toSeq: Seq[String]) extends AnyOutputFormat
+    val code: Int
+
+    lazy val toSeq: Seq[String] = Seq("-outfmt", s"${code}")
+  }
+  abstract class OutputFormat(val code: Int) extends AnyOutputFormat
   case object outputFormat {
 
-    case object pairwiseOutputFormat                  extends OutputFormat(0,outfmtSeq(0))
-    case object queryAnchoredShowIdsOutputFormat      extends OutputFormat(1, outfmtSeq(1))
-    case object queryAnchoredNoIdsOutputFormat        extends OutputFormat(2, outfmtSeq(2))
-    case object flatQueryAnchoredShowIdsOutputFormat  extends OutputFormat(3, outfmtSeq(3))
-    case object flatQueryAnchoredNoIdsOutputFormat    extends OutputFormat(4, outfmtSeq(4))
-    case object XMLOutputFormat                       extends OutputFormat(5, outfmtSeq(5))
-    case object TSVOutputFormat                       extends OutputFormat(6, outfmtSeq(6))
-    case object TSVWithCommentsOutputFormat           extends OutputFormat(7, outfmtSeq(7))
-    case object TextASN1OutputFormat                  extends OutputFormat(8, outfmtSeq(8))
-    case object BinaryASN1OutputFormat                extends OutputFormat(9, outfmtSeq(9))
-    case object CSVOutputFormat                       extends OutputFormat(10, outfmtSeq(10))
-    case object BLASTArchiveASN1OutputFormat          extends OutputFormat(11, outfmtSeq(11))
-    case object JSONSeqalignOutputFormat              extends OutputFormat(12, outfmtSeq(12))
+    case object pairwiseOutputFormat                  extends OutputFormat(0)
+    case object queryAnchoredShowIdsOutputFormat      extends OutputFormat(1)
+    case object queryAnchoredNoIdsOutputFormat        extends OutputFormat(2)
+    case object flatQueryAnchoredShowIdsOutputFormat  extends OutputFormat(3)
+    case object flatQueryAnchoredNoIdsOutputFormat    extends OutputFormat(4)
+    case object XMLOutputFormat                       extends OutputFormat(5)
+    case object TSVOutputFormat                       extends OutputFormat(6)
+    case object TSVWithCommentsOutputFormat           extends OutputFormat(7)
+    case object TextASN1OutputFormat                  extends OutputFormat(8)
+    case object BinaryASN1OutputFormat                extends OutputFormat(9)
+    case object CSVOutputFormat                       extends OutputFormat(10)
+    case object BLASTArchiveASN1OutputFormat          extends OutputFormat(11)
+    case object JSONSeqalignOutputFormat              extends OutputFormat(12)
   }
-
 
   trait AnyOutputRecordFormat {
 
@@ -196,86 +202,88 @@ object blastAPI {
     val fields: Fields
   }
 
-  case class OutputRecordFormat[Flds <: AnyTypeSet.Of[out.AnyOutputField]]( val fields: Flds) extends AnyOutputRecordFormat {
-
+  case class OutputRecordFormat[Flds <: AnyTypeSet.Of[out.AnyOutputField]](val fields: Flds) extends AnyOutputRecordFormat {
     type Fields = Flds
   }
 
   object out {
 
-    trait AnyOutputField extends AnyProperty {
+    sealed trait AnyOutputField extends AnyProperty {
 
       type Commands <: AnyTypeSet.Of[AnyBlastCommand]
     }
-    trait OutputField[V] extends AnyOutputField { type Raw = V }
+    trait OutputField[V] extends AnyOutputField {
+      type Raw = V
+      lazy val label: String = toString
+    }
     trait ForCommands[Cmmnds <: AnyTypeSet.Of[AnyBlastCommand]] extends AnyOutputField { type Commands = Cmmnds }
 
     // means Query Seq-id
-    case object qseqid    extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
+    case object qseqid    extends OutputField[String] with ForCommands[AllBlasts]
     // means Query GI
-    case object qgi       extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
+    case object qgi       extends OutputField[String] with ForCommands[AllBlasts]
     // means Query accesion
-    case object qacc      extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
+    case object qacc      extends OutputField[String] with ForCommands[AllBlasts]
     // means Query accesion.version
-    case object qaccver   extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
+    case object qaccver   extends OutputField[Int] with ForCommands[AllBlasts]
     // means Query sequence length
-    case object qlen      extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
+    case object qlen      extends OutputField[Int] with ForCommands[AllBlasts]
     // means Subject Seq-id
-    case object sseqid    extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
+    case object sseqid    extends OutputField[String] with ForCommands[AllBlasts]
     // means All subject Seq-id(s), separated by a ';'
-    case object sallseqid extends OutputField[List[String]] with ForCommands[AllBlasts]   { val label = toString }
+    case object sallseqid extends OutputField[List[String]] with ForCommands[AllBlasts]
     // means Subject GI
-    case object sgi       extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
+    case object sgi       extends OutputField[String] with ForCommands[AllBlasts]
     // means All subject GIs
-    case object sallgi    extends OutputField[List[String]] with ForCommands[AllBlasts]   { val label = toString }
+    case object sallgi    extends OutputField[List[String]] with ForCommands[AllBlasts]
     // means Subject accession
-    case object sacc      extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
+    case object sacc      extends OutputField[String] with ForCommands[AllBlasts]
     // means Subject accession.version
-    case object saccver   extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
+    case object saccver   extends OutputField[String] with ForCommands[AllBlasts]
     // means All subject accessions
-    case object sallacc   extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
+    case object sallacc   extends OutputField[String] with ForCommands[AllBlasts]
     // means Subject sequence length
-    case object slen      extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
+    case object slen      extends OutputField[Int] with ForCommands[AllBlasts]
     // means Start of alignment in query
-    case object qstart    extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
+    case object qstart    extends OutputField[Int] with ForCommands[AllBlasts]
     // means End of alignment in query
-    case object qend      extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
+    case object qend      extends OutputField[Int] with ForCommands[AllBlasts]
     // means Start of alignment in subject
-    case object sstart    extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
+    case object sstart    extends OutputField[Int] with ForCommands[AllBlasts]
     // means End of alignment in subject
-    case object send      extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
+    case object send      extends OutputField[Int] with ForCommands[AllBlasts]
     // means Aligned part of query sequence
-    case object qseq      extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
+    case object qseq      extends OutputField[String] with ForCommands[AllBlasts]
     // means Aligned part of subject sequence
-    case object sseq      extends OutputField[String] with ForCommands[AllBlasts]         { val label = toString }
+    case object sseq      extends OutputField[String] with ForCommands[AllBlasts]
     // means Expect value
-    case object evalue    extends OutputField[Double] with ForCommands[AllBlasts]         { val label = toString }
+    case object evalue    extends OutputField[Double] with ForCommands[AllBlasts]
     // means Bit score
-    case object bitscore  extends OutputField[Long] with ForCommands[AllBlasts]           { val label = toString }
+    case object bitscore  extends OutputField[Long] with ForCommands[AllBlasts]
     // means Raw score
-    case object score     extends OutputField[Long] with ForCommands[AllBlasts]           { val label = toString }
+    case object score     extends OutputField[Long] with ForCommands[AllBlasts]
     // means Alignment length
-    case object length    extends OutputField[Int] with ForCommands[AllBlasts]            { val label = toString }
+    case object length    extends OutputField[Int] with ForCommands[AllBlasts]
     // means Percentage of identical matches
-    case object pident    extends OutputField[Double] with ForCommands[AllBlasts]         { val label = toString }
+    case object pident    extends OutputField[Double] with ForCommands[AllBlasts]
     // case object nident extends OutputField[String]  { // means Number of identical matches
     // }
     // means Number of mismatches
-    case object mismatch  extends OutputField[Int] with ForCommands[AllBlasts]      { val label = toString }
+    case object mismatch  extends OutputField[Int] with ForCommands[AllBlasts]
     // means Number of positive-scoring matches
-    case object positive  extends OutputField[Int] with ForCommands[AllBlasts]      { val label = toString }
+    case object positive  extends OutputField[Int] with ForCommands[AllBlasts]
     // means Number of gap openings
-    case object gapopen   extends OutputField[Int] with ForCommands[AllBlasts]      { val label = toString }
+    case object gapopen   extends OutputField[Int] with ForCommands[AllBlasts]
     // means Total number of gaps
-    case object gaps      extends OutputField[Int] with ForCommands[AllBlasts]      { val label = toString }
+    case object gaps      extends OutputField[Int] with ForCommands[AllBlasts]
     // case object ppos extends OutputField[String]  { // means Percentage of positive-scoring matches
     // }
     // case object frames extends OutputField[String]  { // means Query and subject frames separated by a '/'
     // }
     // means Query frame
-    case object qframe      extends OutputField[String] with ForCommands[AllBlasts]   { val label = toString }
+    case object qframe      extends OutputField[String] with ForCommands[AllBlasts]
     // means Subject frame
-    case object sframe      extends OutputField[String] with ForCommands[AllBlasts]   { val label = toString }
+    case object sframe      extends OutputField[String] with ForCommands[AllBlasts]
     // case object btop extends OutputField[String]  { // means Blast traceback operations (BTOP)
     // }
     // case object staxids extends OutputField[String]  { // means unique Subject Taxonomy ID(s), separated by a ';' (in numerical order)
@@ -303,50 +311,44 @@ object blastAPI {
   import out._
 
   val defaultOutputFormat = OutputRecordFormat(
-    qseqid :~: sseqid :~: pident :~: length :~: mismatch :~: gapopen :~: qstart :~: qend :~: sstart :~: send :~: out.evalue :~: bitscore :~: ∅
+    qseqid      :~:
+    sseqid      :~:
+    pident      :~:
+    length      :~:
+    mismatch    :~:
+    gapopen     :~:
+    qstart      :~:
+    qend        :~:
+    sstart      :~:
+    send        :~:
+    out.evalue  :~:
+    bitscore    :~: ∅
   )
-
-
-  trait OptionFor[C <: AnyBlastCommand] extends TypePredicate[AnyBlastOption] {
-
-    type Condition[O <: AnyBlastOption] = C isIn O#Commands
-  }
 
   trait OutputFieldFor[C <: AnyBlastCommand] extends TypePredicate[out.AnyOutputField] {
 
     type Condition[Flds <: out.AnyOutputField] = C isIn Flds#Commands
   }
 
+  trait OptionFor[C <: AnyBlastCommand] extends TypePredicate[AnyBlastOption] {
+
+    type Condition[O <: AnyBlastOption] = C isIn O#Commands
+  }
+
   import ohnosequences.cosas.ops.typeSets.CheckForAll
 
-  def validOptions[
+  // TODO ops syntax
+  case class WithOptions[
     C <: AnyBlastCommand,
     Opts <: AnyTypeSet.Of[AnyBlastOption]
-  ](cmd: C, opts: Opts)(implicit ev: CheckForAll[Opts, OptionFor[C]]): Opts = {
+  ](val cmd: C, val opts: Opts)(implicit val ev: CheckForAll[Opts, OptionFor[C]])
 
-    opts.checkForAll[OptionFor[C]]; opts
-  }
-
-  def validOutputFormat[
+  case class WithOutputRecordFormat[
     C <: AnyBlastCommand,
     Flds <: AnyTypeSet.Of[out.AnyOutputField]
-  ](cmd: C, flds: Flds)(implicit ev: CheckForAll[Flds, OutputFieldFor[C]]): Flds = {
+  ](val cmd: C, val flds: Flds)(implicit val ev: CheckForAll[Flds, OutputFieldFor[C]])
 
-    flds.checkForAll[OutputFieldFor[C]]; flds
-  }
-
-  val opts = validOptions(
-    blastn,
-    numThreads(12) :~: maxTargetSeqs(3232) :~: task.megablast :~: ∅
-  )
-
-  val outFmt = validOutputFormat(
-    blastn,
-    qseqid :~: sseqid :~: pident :~: length :~: ∅
-  )
-
-  val defaultFields = validOutputFormat(blastn, defaultOutputFormat.fields)
-
+  // TODO update to the types above
   case class blastCmd(val cmd: AnyBlastCommand, val opts: List[AnyBlastOption]) {
 
     def toSeq: Seq[String] = Seq(cmd.name) ++ (opts flatMap { _.toSeq } )
