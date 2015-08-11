@@ -60,52 +60,44 @@ abstract class Blast(val version: String) extends Bundle { blast =>
     success(s"${bundleFullName} installed")
 }
 
+
+
+
+
+
 object blastAPI {
 
   import ohnosequences.cosas.properties._
   import ohnosequences.cosas.typeSets._
+  import ohnosequences.cosas.ops.typeSets.{CheckForAll, ToList }
 
-  sealed trait AnyBlastCommand {  val name: String  }
+  sealed trait AnyBlastCommand {
+
+    val name: String
+
+    type Arguments <: AnyTypeSet.Of[AnyBlastOption]
+  }
+  // TODO check that all args are options for this command
   abstract class BlastCommand(val name: String) extends AnyBlastCommand
 
-  case object blastn        extends BlastCommand("blastn");       type blastn   = blastn.type
-  case object blastp        extends BlastCommand("blastp");       type blastp   = blastp.type
-  case object blastx        extends BlastCommand("blastp");       type blastx   = blastx.type
-  case object tblastn       extends BlastCommand("blastp");       type tblastn  = tblastn.type
-  case object tblastx       extends BlastCommand("blastp");       type tblastx  = tblastx.type
-  case object makeblastdb   extends BlastCommand("makeblastdb");  type makeblastdb = makeblastdb.type
+  trait OutputFieldFor[C <: AnyBlastCommand] extends TypePredicate[AnyOutputField] {
 
-  type AllBlasts  = blastn :~: blastp :~: blastx :~: tblastn :~: tblastx :~: ∅
-  val allBlasts   = blastn :~: blastp :~: blastx :~: tblastn :~: tblastx :~: ∅
-
-  sealed trait AnyCommandArguments {
-
-    type Command <: AnyBlastCommand
-    val command: Command
-
-    val toSeq: Seq[String]
-  }
-  abstract class CommandArguments[Cmmnd <: AnyBlastCommand](val command: Cmmnd, val toSeq: Seq[String])
-  extends AnyCommandArguments { type Command = Cmmnd }
-
-  // TODO should be argument
-  case class db(val file: File) {
-    val toSeq = Seq("-db", file.getCanonicalPath().toString)
-  }
-  // TODO should be argument
-  case class query(val file: File){
-    val toSeq = Seq("-query", file.getCanonicalPath().toString)
-  }
-  // TODO should be argument
-  case class out(val file: File){
-    val toSeq = Seq("-out", file.getCanonicalPath().toString)
+    type Condition[Flds <: AnyOutputField] = C isIn Flds#Commands
   }
 
-  case class arguments[X <: AnyBlastCommand : in[AllBlasts]#is](val cmd: X)(
-    val query: query,
-    val db: db,
-    val out: out
-  ) extends CommandArguments(cmd, query.toSeq ++ db.toSeq ++ out.toSeq)
+  implicit def getBlastCommandOps[BC <: AnyBlastCommand](cmd: BC): BlastCommandOps[BC] =
+    BlastCommandOps(cmd)
+
+  case class BlastCommandOps[Cmd <: AnyBlastCommand](val cmd: Cmd) {
+
+    def withOptions[
+      Opts <: AnyTypeSet.Of[AnyBlastOption]
+    ](opts: Opts)(implicit
+      ev: CheckForAll[Opts, OptionFor[Cmd]],
+      toListEv: ToListOf[Opts, AnyBlastOption],
+      allArgs: Cmd#Arguments ⊂ Opts
+    ): BlastExec[Cmd,Opts] = BlastExec[Cmd, Opts](cmd: Cmd, opts: Opts)
+  }
 
   sealed trait AnyBlastOption {
 
@@ -119,6 +111,111 @@ object blastAPI {
     val toSeq: Seq[String]
   )
   extends AnyBlastOption { type Commands = Cmmnds }
+
+  trait OptionFor[C <: AnyBlastCommand] extends TypePredicate[AnyBlastOption] {
+
+    type Condition[O <: AnyBlastOption] = C isIn O#Commands
+  }
+
+  case class BlastExec[
+    Cmd <: AnyBlastCommand,
+    Opts <: AnyTypeSet.Of[AnyBlastOption]// with AnyTypeSet.SupersetOf[Cmd#Arguments]
+  ](
+    val command: Cmd,
+    val options: Opts
+  )(implicit
+    val ev: CheckForAll[Opts, OptionFor[Cmd]],
+    val toListEv: ToListOf[Opts, AnyBlastOption],
+    val allArgs: Cmd#Arguments ⊂ Opts
+  ) {
+
+    // TODO missing part about output format
+    def toSeq: Seq[String] =  Seq(command.name) ++
+                              ( (options.toListOf[AnyBlastOption]) flatMap { _.toSeq } )
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  type blastn   = blastn.type
+  case object blastn extends BlastCommand("blastn") {
+
+    type Arguments = db :~: query :~: out :~: ∅
+  }
+
+  type blastp   = blastp.type
+  case object blastp extends BlastCommand("blastp") {
+
+    type Arguments = db :~: query :~: out :~: ∅
+  }
+
+  type blastx   = blastx.type
+  case object blastx extends BlastCommand("blastx") {
+
+    type Arguments = db :~: query :~: out :~: ∅
+  }
+
+  type tblastn   = tblastn.type
+  case object tblastn extends BlastCommand("tblastn") {
+
+    type Arguments = db :~: query :~: out :~: ∅
+  }
+
+  type tblastx   = tblastx.type
+  case object tblastx extends BlastCommand("tblastx") {
+
+    type Arguments = db :~: query :~: out :~: ∅
+  }
+
+  type makeblastdb   = makeblastdb.type
+  case object makeblastdb extends BlastCommand("makeblastdb") {
+
+    type Arguments = in :~: inputType :~: dbtype :~: ∅
+  }
+
+  type AllBlasts  = blastn :~: blastp :~: blastx :~: tblastn :~: tblastx :~: ∅
+  val allBlasts   = blastn :~: blastp :~: blastx :~: tblastn :~: tblastx :~: ∅
+
+  case class db(val file: File) extends BlastOption(
+    allBlasts,
+    Seq("-db", file.getCanonicalPath().toString)
+  )
+
+  case class query(val file: File) extends BlastOption(
+    allBlasts,
+    Seq("-query", file.getCanonicalPath().toString)
+  )
+
+  case class out(val file: File) extends BlastOption(
+    allBlasts,
+    Seq("-out", file.getCanonicalPath().toString)
+  )
+
+
 
   case class numThreads(val number: Int)    extends BlastOption(
     allBlasts,
@@ -184,7 +281,11 @@ object blastAPI {
     Seq("-dbtype", tpe.toString)
   )
   case class title(val name: String)        extends BlastOption(makeblastdb :~: ∅, Seq("-title", name))
-  case class outfmt(val number: Int)        extends BlastOption(allBlasts, Seq("-outfmt", s"${number}") )
+
+  case class in(val file: File) extends BlastOption(
+    makeblastdb :~: ∅,
+    Seq("-in", file.getCanonicalPath().toString)
+  )
 
   sealed trait AnyOutputFormat extends AnyBlastOption {
 
@@ -192,49 +293,67 @@ object blastAPI {
     type Commands = AllBlasts
     val commands = allBlasts
 
-    val code: Int
+    type OutputFormatType <: AnyOutputFormatType
+    val outputFormatType: OutputFormatType
 
-    lazy val toSeq: Seq[String] = Seq("-outfmt", s"${code}")
+    type OutputRecordFormat <: AnyTypeSet.Of[AnyOutputField]
+    val outputRecordFormat: OutputRecordFormat
+
+    implicit val outputRecordFormatList: ToListOf[OutputRecordFormat, AnyOutputField]
+
+    lazy val outputRecordFormatStr = (outputRecordFormat.toListOf[AnyOutputField] map {_.toString}).mkString(" ")
+    lazy val code: Int = outputFormatType.code
+    lazy val toSeq: Seq[String] = Seq("-outfmt", s"'${code} ${outputRecordFormatStr}'")
   }
-  abstract class OutputFormat(val code: Int) extends AnyOutputFormat
-  case object outputFormat {
-
-    case object pairwiseOutputFormat                  extends OutputFormat(0)
-    case object queryAnchoredShowIdsOutputFormat      extends OutputFormat(1)
-    case object queryAnchoredNoIdsOutputFormat        extends OutputFormat(2)
-    case object flatQueryAnchoredShowIdsOutputFormat  extends OutputFormat(3)
-    case object flatQueryAnchoredNoIdsOutputFormat    extends OutputFormat(4)
-    case object XMLOutputFormat                       extends OutputFormat(5)
-    case object TSVOutputFormat                       extends OutputFormat(6)
-    case object TSVWithCommentsOutputFormat           extends OutputFormat(7)
-    case object TextASN1OutputFormat                  extends OutputFormat(8)
-    case object BinaryASN1OutputFormat                extends OutputFormat(9)
-    case object CSVOutputFormat                       extends OutputFormat(10)
-    case object BLASTArchiveASN1OutputFormat          extends OutputFormat(11)
-    case object JSONSeqalignOutputFormat              extends OutputFormat(12)
-  }
-
-  trait AnyOutputRecordFormat {
-
-    type Fields <: AnyTypeSet.Of[out.AnyOutputField]
-    val fields: Fields
+  case class outfmt[
+    T <: AnyOutputFormatType,
+    OF <: AnyTypeSet.Of[AnyOutputField]
+  ]
+  (val outputFormatType: T, val outputRecordFormat: OF)(implicit
+    val outputRecordFormatList: ToListOf[OF, AnyOutputField]
+  )
+    extends AnyOutputFormat
+  {
+    type OutputFormatType = T
+    type OutputRecordFormat = OF
   }
 
-  case class OutputRecordFormat[Flds <: AnyTypeSet.Of[out.AnyOutputField]](val fields: Flds) extends AnyOutputRecordFormat {
-    type Fields = Flds
+  sealed trait AnyOutputFormatType { val code: Int }
+  abstract class OutputFormatType(val code: Int) extends AnyOutputFormatType
+  case object format {
+
+    case object pairwise                  extends OutputFormatType(0)
+    case object queryAnchoredShowIds      extends OutputFormatType(1)
+    case object queryAnchoredNoIds        extends OutputFormatType(2)
+    case object flatQueryAnchoredShowIds  extends OutputFormatType(3)
+    case object flatQueryAnchoredNoIds    extends OutputFormatType(4)
+    case object XML                       extends OutputFormatType(5)
+    case object TSV                       extends OutputFormatType(6)
+    case object TSVWithComments           extends OutputFormatType(7)
+    case object TextASN1                  extends OutputFormatType(8)
+    case object BinaryASN1                extends OutputFormatType(9)
+    case object CSV                       extends OutputFormatType(10)
+    case object BLASTArchiveASN1          extends OutputFormatType(11)
+    case object JSONSeqalign              extends OutputFormatType(12)
   }
 
-  object out {
+  sealed trait AnyOutputField extends AnyProperty {
 
-    sealed trait AnyOutputField extends AnyProperty {
+    type Commands <: AnyTypeSet.Of[AnyBlastCommand]
+  }
 
-      type Commands <: AnyTypeSet.Of[AnyBlastCommand]
+  trait OutputField[V] extends AnyOutputField {
+
+    type Raw = V
+    lazy val label: String = toString
+  }
+
+  case object out {
+
+    trait ForCommands[Cmmnds <: AnyTypeSet.Of[AnyBlastCommand]] extends AnyOutputField {
+
+      type Commands = Cmmnds
     }
-    trait OutputField[V] extends AnyOutputField {
-      type Raw = V
-      lazy val label: String = toString
-    }
-    trait ForCommands[Cmmnds <: AnyTypeSet.Of[AnyBlastCommand]] extends AnyOutputField { type Commands = Cmmnds }
 
     // means Query Seq-id
     case object qseqid    extends OutputField[String] with ForCommands[AllBlasts]
@@ -328,65 +447,18 @@ object blastAPI {
 
   import out._
 
-  val defaultOutputFormat = OutputRecordFormat(
-    qseqid      :~:
-    sseqid      :~:
-    pident      :~:
-    length      :~:
-    mismatch    :~:
-    gapopen     :~:
-    qstart      :~:
-    qend        :~:
-    sstart      :~:
-    send        :~:
-    out.evalue  :~:
-    bitscore    :~: ∅
-  )
+  val defaultOutputFields = qseqid      :~:
+                            sseqid      :~:
+                            pident      :~:
+                            length      :~:
+                            mismatch    :~:
+                            gapopen     :~:
+                            qstart      :~:
+                            qend        :~:
+                            sstart      :~:
+                            send        :~:
+                            out.evalue  :~:
+                            bitscore    :~: ∅
 
-  trait OutputFieldFor[C <: AnyBlastCommand] extends TypePredicate[out.AnyOutputField] {
-
-    type Condition[Flds <: out.AnyOutputField] = C isIn Flds#Commands
-  }
-
-  trait OptionFor[C <: AnyBlastCommand] extends TypePredicate[AnyBlastOption] {
-
-    type Condition[O <: AnyBlastOption] = C isIn O#Commands
-  }
-
-  import ohnosequences.cosas.ops.typeSets.{CheckForAll, ToList }
-
-  // TODO ops syntax
-  case class WithOptions[
-    C <: AnyBlastCommand,
-    Opts <: AnyTypeSet.Of[AnyBlastOption]
-  ](val cmd: C, val opts: Opts)(implicit
-    val ev: CheckForAll[Opts, OptionFor[C]],
-    val toListEv: ToListOf[Opts, AnyBlastOption]
-  )
-
-  // TODO add a OutputFormat ADT with constructors for the other options
-  case class WithOutputRecordFormat[
-    C <: AnyBlastCommand,
-    Flds <: AnyTypeSet.Of[out.AnyOutputField]
-  ](val cmd: C, val flds: Flds)(implicit val ev: CheckForAll[Flds, OutputFieldFor[C]])
-
-  // TODO update to the types above
-  case class BlastExec[
-    Cmd <: AnyBlastCommand,
-    Opts <: AnyTypeSet.Of[AnyBlastOption],
-    Flds <: AnyTypeSet.Of[out.AnyOutputField]
-  ](
-    val command: Cmd,
-    val arguments: CommandArguments[Cmd],
-    val options: WithOptions[Cmd,Opts],
-    val outputFormat: WithOutputRecordFormat[Cmd,Flds]
-  ) {
-
-    import options._
-    // TODO missing part about output format
-    def toSeq: Seq[String] =  Seq(command.name) ++
-                              arguments.toSeq   ++
-                              ( (options.opts.toListOf[AnyBlastOption]) flatMap { _.toSeq } )
-  }
 
 }
