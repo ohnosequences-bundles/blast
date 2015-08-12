@@ -20,6 +20,9 @@ class apiTests extends org.scalatest.FunSuite {
         out(outFile)      :~:
         outfmt(format.TSV, defaultOutputFields) :~: ∅
 
-    println (uh.toSeq.mkString(" "))
+    assert(
+      uh.toSeq.mkString(" ") ===
+      "blastn -db /tmp/buh -query /tmp/query -out /tmp/blastout -outfmt '6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore'"
+    )
   }
 }
