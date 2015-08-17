@@ -14,6 +14,6 @@ resolvers ++= Seq(
 
 libraryDependencies ++= Seq(
   "ohnosequences" %% "statika"  % "2.0.0-SNAPSHOT",
-  "ohnosequences" %% "cosas"    % "0.6.0",
+  "ohnosequences" %% "cosas"    % "0.7.0-simpler-records-SNAPSHOT",
   "org.scalatest" %% "scalatest" % "2.2.4" % Test
 )
