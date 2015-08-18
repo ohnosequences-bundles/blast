@@ -2,7 +2,7 @@ package ohnosequencesBundles.statika
 
 object blastAPI {
 
-  import ohnosequences.cosas._, typeSets._, properties._, types._
+  import ohnosequences.cosas._, typeSets._, properties._, types._, records._
   import ohnosequences.cosas.ops.typeSets.{ CheckForAll, ToList }
 
   import java.io.File
@@ -18,7 +18,7 @@ object blastAPI {
     val name: String
 
     // TODO check that all args are options for this command. Will need an itermediate type
-    type Arguments <: AnyTypeSet.Of[AnyBlastOption]
+    type Arguments <: AnyRecord { type Fields <: AnyFields.withBound[AnyBlastOption] }
   }
   abstract class BlastCommand(val name: String) extends AnyBlastCommand
 
@@ -99,38 +99,39 @@ object blastAPI {
   */
   type blastn   = blastn.type
   case object blastn extends BlastCommand("blastn") {
-
-    type Arguments = db.type :~: query.type :~: out.type :~: ∅
+    case object arguments extends Record(db :&: query :&: out :&: □)
+    type Arguments = arguments.type
   }
 
   type blastp   = blastp.type
   case object blastp extends BlastCommand("blastp") {
-
-    type Arguments = db.type :~: query.type :~: out.type :~: ∅
+    case object arguments extends Record(db :&: query :&: out :&: □)
+    type Arguments = arguments.type
   }
 
   type blastx   = blastx.type
   case object blastx extends BlastCommand("blastx") {
-
-    type Arguments = db.type :~: query.type :~: out.type :~: ∅
+    case object arguments extends Record(db :&: query :&: out :&: □)
+    type Arguments = arguments.type
   }
 
   type tblastn   = tblastn.type
   case object tblastn extends BlastCommand("tblastn") {
-
-    type Arguments = db.type :~: query.type :~: out.type :~: ∅
+    case object arguments extends Record(db :&: query :&: out :&: □)
+    type Arguments = arguments.type
   }
 
   type tblastx   = tblastx.type
   case object tblastx extends BlastCommand("tblastx") {
-
-    type Arguments = db.type :~: query.type :~: out.type :~: ∅
+    case object arguments extends Record(db :&: query :&: out :&: □)
+    type Arguments = arguments.type
   }
 
   type makeblastdb   = makeblastdb.type
   case object makeblastdb extends BlastCommand("makeblastdb") {
 
-    type Arguments = in.type :~: input_type.type :~: dbtype.type :~: ∅
+    case object arguments extends Record(in :&: input_type :&: dbtype :&: □)
+    type Arguments = arguments.type
   }
 
   /* Just a convenience type for all the blast-like commands (search query in db) */
