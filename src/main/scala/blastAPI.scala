@@ -26,14 +26,18 @@ case object blastAPI {
 
     lazy val label: String = s"-${toString}"
   }
+  case object AnyBlastOption {
+
+    type is[B <: AnyBlastOption] = B with AnyBlastOption { type Raw = B#Raw }
+  }
   abstract class BlastOption[V](val valueToString: V => String) extends AnyBlastOption { type Raw = V }
 
   // this is most likely crap
   import shapeless._, poly._
-  object optionValueToSeq extends shapeless.Poly1 {
+  case object optionValueToSeq extends shapeless.Poly1 {
 
-    implicit def default[BO <: AnyBlastOption](implicit option: BO, conv: ValueOf[BO] => String) =
-      at[ValueOf[BO]]{ v: ValueOf[BO] => Seq( option.label, conv(v) ) }
+    implicit def default[BO <: AnyBlastOption](implicit option: AnyBlastOption.is[BO]) =
+      at[ValueOf[BO]]{ v: ValueOf[BO] => Seq[String]( option.label, option.valueToString(v.value) ) }
   }
 
 
@@ -42,18 +46,25 @@ case object blastAPI {
 
     case object arguments extends Record(db :&: query :&: out :&: □)
     type Arguments = arguments.type
-    case object options extends Record(num_threads :&: task(blastn) :&: evalue :&: strand :&: word_size :&: show_gis :&: ungapped :&: □)
+    case object options extends Record(num_threads :&: (task(blastn): task[blastn]) :&: evalue :&: strand :&: word_size :&: show_gis :&: ungapped :&: □)
     type Options = options.type
 
-    val defaults = options(
-      num_threads(1)                :~:
-      task(blastn)(task.megablast)  :~:
-      evalue(10)                    :~:
-      strand(Strands.both)          :~:
-      word_size(4)                  :~:
-      show_gis(false)               :~:
-      ungapped(false)               :~: ∅
-    )
+    val defaultsRaw = num_threads(1)                :~:
+                      (new ValueOf[task[blastn]](task.megablast))  :~:
+                      evalue(10)                    :~:
+                      strand(Strands.both)          :~:
+                      word_size(4)                  :~:
+                      show_gis(false)               :~:
+                      ungapped(false)               :~: ∅
+
+    val defaults = options( defaultsRaw )
+
+    // lazy val defaultsToSeq = (defaultsRaw) mapToList optionValueToSeq
+
+    lazy val scalacRulezzz: List[Seq[String]] = defaultsRaw.mapToList(optionValueToSeq)
+
+    val oh = optionValueToSeq(num_threads(1))
+
   }
 
   type blastp   = blastp.type
