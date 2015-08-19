@@ -49,17 +49,17 @@ case object blastAPI {
     case object options extends Record(num_threads :&: task :&: evalue :&: strand :&: word_size :&: show_gis :&: ungapped :&: □)
     type Options = options.type
 
-    val defaultsRaw = num_threads(1)                :~:
+    val defaults = options(
+                      num_threads(1)                :~:
                       task(blastn)                  :~:
                       evalue(10)                    :~:
                       strand(Strands.both)          :~:
                       word_size(4)                  :~:
                       show_gis(false)               :~:
                       ungapped(false)               :~: ∅
+                    )
 
-    val defaults = options( defaultsRaw )
-
-    lazy val defaultsToSeq = (defaultsRaw) mapToList optionValueToSeq
+    lazy val defaultsToSeq = defaults.value mapToList optionValueToSeq
 
     case object task extends BlastOption[Task](t => t.name)
 
