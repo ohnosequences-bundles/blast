@@ -16,7 +16,7 @@ case object blastAPI {
 
     val defaults: ValueOf[Options]
     // TODO much fields so record
-    type Raw = ValueOf[Arguments]
+    type Raw = ValueOf[Arguments] :~: ValueOf[Options] :~: ∅
   }
 
   sealed trait AnyBlastOption extends AnyProperty {
@@ -61,8 +61,8 @@ case object blastAPI {
 
     lazy val defaultsToSeq = defaults.value mapToList optionValueToSeq
 
+    // task depends on each command, that's why it is here.
     case object task extends BlastOption[Task](t => t.name)
-
     sealed abstract class Task(val name: String)
     case object megablast       extends Task( "megablast" )
     case object dcMegablast     extends Task( "dc-megablast" )
@@ -214,8 +214,14 @@ case object blastAPI {
 
 
 
-
-
+  val buh = blastn(
+    blastn.arguments(
+      db(new File("/tmp/db"))       :~:
+      query(new File("/tmp/query")) :~:
+      out(new File("/tmp/out"))     :~: ∅
+    )               :~: 
+    blastn.defaults :~: ∅
+  )
 
 
 
