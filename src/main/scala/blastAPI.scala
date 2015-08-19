@@ -52,7 +52,7 @@ case object blastAPI {
       strand(Strands.both)          :~:
       word_size(4)                  :~:
       show_gis(false)               :~:
-      ungapped                      :~: ∅
+      ungapped(false)               :~: ∅
     )
   }
 
@@ -159,14 +159,14 @@ case object blastAPI {
   case object title extends BlastOption[String](x => x)
   case object in extends BlastOption[File](f => f.getCanonicalPath.toString)
 
-  case object input_type extends BlastOption[BlastDBInputType](t => t.toString)
-  sealed trait BlastDBInputType
-  object dbInputType {
+  case object input_type extends BlastOption[DBInputType](t => t.toString)
+  sealed trait DBInputType
+  case object DBInputType {
 
-    case object asn1_bin  extends BlastDBInputType
-    case object asn1_txt  extends BlastDBInputType
-    case object blastdb   extends BlastDBInputType
-    case object fasta     extends BlastDBInputType
+    case object asn1_bin  extends DBInputType
+    case object asn1_txt  extends DBInputType
+    case object blastdb   extends DBInputType
+    case object fasta     extends DBInputType
   }
 
   case object dbtype extends BlastOption[BlastDBType](t => t.toString)
