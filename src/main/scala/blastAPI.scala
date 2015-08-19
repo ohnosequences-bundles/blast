@@ -46,11 +46,11 @@ case object blastAPI {
 
     case object arguments extends Record(db :&: query :&: out :&: □)
     type Arguments = arguments.type
-    case object options extends Record(num_threads :&: (task(blastn): task[blastn]) :&: evalue :&: strand :&: word_size :&: show_gis :&: ungapped :&: □)
+    case object options extends Record(num_threads :&: task :&: evalue :&: strand :&: word_size :&: show_gis :&: ungapped :&: □)
     type Options = options.type
 
     val defaultsRaw = num_threads(1)                :~:
-                      (new ValueOf[task[blastn]](task.megablast))  :~:
+                      task(blastn)                  :~:
                       evalue(10)                    :~:
                       strand(Strands.both)          :~:
                       word_size(4)                  :~:
@@ -59,12 +59,16 @@ case object blastAPI {
 
     val defaults = options( defaultsRaw )
 
-    // lazy val defaultsToSeq = (defaultsRaw) mapToList optionValueToSeq
+    lazy val defaultsToSeq = (defaultsRaw) mapToList optionValueToSeq
 
-    lazy val scalacRulezzz: List[Seq[String]] = defaultsRaw.mapToList(optionValueToSeq)
+    case object task extends BlastOption[Task](t => t.name)
 
-    val oh = optionValueToSeq(num_threads(1))
-
+    sealed abstract class Task(val name: String)
+    case object megablast       extends Task( "megablast" )
+    case object dcMegablast     extends Task( "dc-megablast" )
+    case object blastn          extends Task( "blastn" )
+    case object blastnShort     extends Task( "blastn-short" )
+    case object rmblastn        extends Task( "rmblastn" )
   }
 
   type blastp   = blastp.type
@@ -142,16 +146,11 @@ case object blastAPI {
     case object plus  extends Strands
   }
 
-  case class task[BC <: AnyBlastCommand](val cmd: BC) extends BlastOption[BlastTask[BC]](bt => bt.taskName)
+
+  case class task[BC <: AnyBlastCommand]() extends BlastOption[BlastTask[BC]](bt => bt.taskName)
 
   sealed abstract class BlastTask[BC <: AnyBlastCommand](val bc: BC, val taskName: String)
   case object task {
-
-    case object megablast       extends BlastTask( blastAPI.blastn, "megablast" )
-    case object dcMegablast     extends BlastTask( blastAPI.blastn, "dc-megablast" )
-    case object blastn          extends BlastTask( blastAPI.blastn, "blastn" )
-    case object blastnShort     extends BlastTask( blastAPI.blastn, "blastn-short" )
-    case object rmblastn        extends BlastTask( blastAPI.blastn, "rmblastn" )
 
     case object blastp          extends BlastTask( blastAPI.blastp, "blastp" )
     case object blastpFast      extends BlastTask( blastAPI.blastp, "blastp-fast" )
