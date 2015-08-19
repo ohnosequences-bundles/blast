@@ -36,47 +36,24 @@ case object blastAPI {
       at[ValueOf[BO]]{ v: ValueOf[BO] => Seq( option.label, conv(v) ) }
   }
 
-  // case class BlastStatement[
-  //   Cmd <: AnyBlastCommand,
-  //   Opts <: AnyTypeSet.Of[AnyBlastOption]
-  // ](
-  //   val command: Cmd,
-  //   val options: Opts
-  // )(implicit
-  //   val ev: CheckForAll[Opts, OptionFor[Cmd]],
-  //   val toListEv: ToListOf[Opts, AnyBlastOption],
-  //   val allArgs: Cmd#Arguments ⊂ Opts
-  // )
-  // {
-  //   def toSeq: Seq[String] =  Seq(command.name) ++
-  //                             ( (options.toListOf[AnyBlastOption]) flatMap { _.toSeq } )
-  // }
-  //
-  // implicit def getBlastCommandOps[BC <: AnyBlastCommand](cmd: BC): BlastCommandOps[BC] =
-  //   BlastCommandOps(cmd)
-  //
-  // case class BlastCommandOps[Cmd <: AnyBlastCommand](val cmd: Cmd) {
-  //
-  //   def withOptions[
-  //     Opts <: AnyTypeSet.Of[AnyBlastOption]
-  //   ](opts: Opts)(implicit
-  //     ev: CheckForAll[Opts, OptionFor[Cmd]],
-  //     toListEv: ToListOf[Opts, AnyBlastOption],
-  //     allArgs: Cmd#Arguments ⊂ Opts
-  //   ): BlastStatement[Cmd,Opts] = BlastStatement(cmd, opts)
-  // }
 
   type blastn   = blastn.type
   case object blastn extends AnyBlastCommand {
 
     case object arguments extends Record(db :&: query :&: out :&: □)
     type Arguments = arguments.type
-    case object options extends Record(num_threads :&: task(blastn) :&: □)
+    case object options extends Record(num_threads :&: task(blastn) :&: evalue :&: strand :&: word_size :&: show_gis :&: ungapped :&: □)
     type Options = options.type
 
-    val defaults = options :=
-      num_threads(1)            :~: 
-      task(blastn)(task.blastn) :~: ∅
+    val defaults = options(
+      num_threads(1)                :~:
+      task(blastn)(task.megablast)  :~:
+      evalue(10)                    :~:
+      strand(Strands.both)          :~:
+      word_size(4)                  :~:
+      show_gis(false)               :~:
+      ungapped                      :~: ∅
+    )
   }
 
   type blastp   = blastp.type
@@ -143,6 +120,17 @@ case object blastAPI {
   case object max_target_seqs extends BlastOption[Int](n => n.toString)
   case object show_gis        extends BlastOption[Boolean](t => "")
 
+  case object word_size extends BlastOption[Int](n => if( n < 4 ) 4.toString else n.toString )
+  case object ungapped extends BlastOption[Boolean](t => "")
+
+  case object strand extends BlastOption[Strands](_.toString)
+  sealed trait Strands
+  case object Strands {
+    case object both  extends Strands
+    case object minus extends Strands
+    case object plus  extends Strands
+  }
+
   case class task[BC <: AnyBlastCommand](val cmd: BC) extends BlastOption[BlastTask[BC]](bt => bt.taskName)
 
   sealed abstract class BlastTask[BC <: AnyBlastCommand](val bc: BC, val taskName: String)
@@ -153,11 +141,14 @@ case object blastAPI {
     case object blastn          extends BlastTask( blastAPI.blastn, "blastn" )
     case object blastnShort     extends BlastTask( blastAPI.blastn, "blastn-short" )
     case object rmblastn        extends BlastTask( blastAPI.blastn, "rmblastn" )
+
     case object blastp          extends BlastTask( blastAPI.blastp, "blastp" )
     case object blastpFast      extends BlastTask( blastAPI.blastp, "blastp-fast" )
     case object blastpShort     extends BlastTask( blastAPI.blastp, "blastp-short" )
+
     case object blastx          extends BlastTask( blastAPI.blastx, "blastx" )
     case object blastxFast      extends BlastTask( blastAPI.blastx, "blastx-fast" )
+
     case object tblastn         extends BlastTask( blastAPI.tblastn, "tblastn" )
     case object tblastnFast     extends BlastTask( blastAPI.tblastn, "tblastn-fast" )
   }
@@ -415,4 +406,36 @@ case object blastAPI {
                             send        :~:
                             outFields.evalue  :~:
                             bitscore    :~: ∅
+
+
+
+                            // case class BlastStatement[
+                            //   Cmd <: AnyBlastCommand,
+                            //   Opts <: AnyTypeSet.Of[AnyBlastOption]
+                            // ](
+                            //   val command: Cmd,
+                            //   val options: Opts
+                            // )(implicit
+                            //   val ev: CheckForAll[Opts, OptionFor[Cmd]],
+                            //   val toListEv: ToListOf[Opts, AnyBlastOption],
+                            //   val allArgs: Cmd#Arguments ⊂ Opts
+                            // )
+                            // {
+                            //   def toSeq: Seq[String] =  Seq(command.name) ++
+                            //                             ( (options.toListOf[AnyBlastOption]) flatMap { _.toSeq } )
+                            // }
+                            //
+                            // implicit def getBlastCommandOps[BC <: AnyBlastCommand](cmd: BC): BlastCommandOps[BC] =
+                            //   BlastCommandOps(cmd)
+                            //
+                            // case class BlastCommandOps[Cmd <: AnyBlastCommand](val cmd: Cmd) {
+                            //
+                            //   def withOptions[
+                            //     Opts <: AnyTypeSet.Of[AnyBlastOption]
+                            //   ](opts: Opts)(implicit
+                            //     ev: CheckForAll[Opts, OptionFor[Cmd]],
+                            //     toListEv: ToListOf[Opts, AnyBlastOption],
+                            //     allArgs: Cmd#Arguments ⊂ Opts
+                            //   ): BlastStatement[Cmd,Opts] = BlastStatement(cmd, opts)
+                            // }
 }
