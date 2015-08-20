@@ -10,21 +10,23 @@ case object blastAPI {
 
     lazy val label: String = toString
 
-    // TODO check that all args are options for this command. Will need an itermediate type
     type Arguments  <: AnyRecord { type Fields <: AnyFields.withBound[AnyBlastOption] }
     type Options    <: AnyRecord { type Fields <: AnyFields.withBound[AnyBlastOption] }
 
     val defaults: ValueOf[Options]
-    // TODO much fields so record
-    type Raw = ValueOf[Arguments] :~: ValueOf[Options] :~: ∅
+    val defaultsAsSeq: Seq[Seq[String]]
+
+    // type Raw >: ValueOf[Arguments] :~: ValueOf[Options] :~: ∅ <: ValueOf[Arguments] :~: ValueOf[Options] :~: ∅
+    type Raw >: (ValueOf[Arguments], ValueOf[Options]) <: (ValueOf[Arguments], ValueOf[Options]) // <: (Arguments#Raw, Options#Raw)
   }
 
   sealed trait AnyBlastOption extends AnyProperty {
 
-    // type Commands <: AnyTypeSet.Of[AnyBlastCommand]
-    val valueToString: Raw => String
-
+    /* The `label` is used for generating the command-line `String` representation of this option. For a BLAST option `-x_yz_abc` name your option here `case object x_yz_abc`. */
     lazy val label: String = s"-${toString}"
+
+    /* this is used for serializing values to command-line args */
+    val valueToString: Raw => String
   }
   case object AnyBlastOption {
 
@@ -32,8 +34,7 @@ case object blastAPI {
   }
   abstract class BlastOption[V](val valueToString: V => String) extends AnyBlastOption { type Raw = V }
 
-  // this is most likely crap
-  import shapeless._, poly._
+  import shapeless.poly._
   case object optionValueToSeq extends shapeless.Poly1 {
 
     implicit def default[BO <: AnyBlastOption](implicit option: AnyBlastOption.is[BO]) =
@@ -41,25 +42,33 @@ case object blastAPI {
   }
 
 
-  type blastn   = blastn.type
+  type blastn = blastn.type
   case object blastn extends AnyBlastCommand {
 
     case object arguments extends Record(db :&: query :&: out :&: □)
     type Arguments = arguments.type
-    case object options extends Record(num_threads :&: task :&: evalue :&: strand :&: word_size :&: show_gis :&: ungapped :&: □)
+    case object options extends Record(
+      num_threads :&:
+      task        :&:
+      evalue      :&:
+      strand      :&:
+      word_size   :&:
+      show_gis    :&:
+      ungapped    :&: □
+    )
     type Options = options.type
 
     val defaults = options(
-                      num_threads(1)                :~:
-                      task(blastn)                  :~:
-                      evalue(10)                    :~:
-                      strand(Strands.both)          :~:
-                      word_size(4)                  :~:
-                      show_gis(false)               :~:
-                      ungapped(false)               :~: ∅
-                    )
+      num_threads(1)                :~:
+      task(blastn)                  :~:
+      evalue(10)                    :~:
+      strand(Strands.both)          :~:
+      word_size(4)                  :~:
+      show_gis(false)               :~:
+      ungapped(false)               :~: ∅
+    )
 
-    lazy val defaultsToSeq = defaults.value mapToList optionValueToSeq
+    lazy val defaultsAsSeq = defaults.value mapToList optionValueToSeq
 
     // task depends on each command, that's why it is here.
     case object task extends BlastOption[Task](t => t.name)
@@ -71,7 +80,7 @@ case object blastAPI {
     case object rmblastn        extends Task( "rmblastn" )
   }
 
-  type blastp   = blastp.type
+  type blastp = blastp.type
   case object blastp extends AnyBlastCommand {
 
     case object arguments extends Record(db :&: query :&: out :&: □)
@@ -79,7 +88,18 @@ case object blastAPI {
     case object options extends Record(num_threads :&: □)
     type Options = options.type
 
-    val defaults = options := num_threads(1) :~: ∅
+
+    val defaults = options(
+      num_threads(1) :~: ∅
+    )
+
+    lazy val defaultsAsSeq = defaults.value mapToList optionValueToSeq
+
+    case object task extends BlastOption[Task](t => t.name)
+    sealed abstract class Task(val name: String)
+    case object blastp      extends Task( "blastp" )
+    case object blastpFast  extends Task( "blastp-fast" )
+    case object blastpShort extends Task( "blastp-short" )
   }
 
   type blastx   = blastx.type
@@ -90,10 +110,19 @@ case object blastAPI {
     case object options extends Record(num_threads :&: □)
     type Options = options.type
 
-    val defaults = options := num_threads(1) :~: ∅
+    val defaults = options(
+      num_threads(1) :~: ∅
+    )
+
+    lazy val defaultsAsSeq = defaults.value mapToList optionValueToSeq
+
+    case object task extends BlastOption[Task](t => t.name)
+    sealed abstract class Task(val name: String)
+    case object blastx     extends Task( "blastx" )
+    case object blastxFast extends Task( "blastx-fast" )
   }
 
-  type tblastn   = tblastn.type
+  type tblastn = tblastn.type
   case object tblastn extends AnyBlastCommand {
 
     case object arguments extends Record(db :&: query :&: out :&: □)
@@ -102,9 +131,16 @@ case object blastAPI {
     type Options = options.type
 
     val defaults = options := num_threads(1) :~: ∅
+
+    lazy val defaultsAsSeq = defaults.value mapToList optionValueToSeq
+
+    case object task extends BlastOption[Task](t => t.name)
+    sealed abstract class Task(val name: String)
+    case object tblastn     extends Task( "tblastn" )
+    case object tblastnFast extends Task( "tblastn-fast" )
   }
 
-  type tblastx   = tblastx.type
+  type tblastx = tblastx.type
   case object tblastx extends AnyBlastCommand {
 
     case object arguments extends Record(db :&: query :&: out :&: □)
@@ -113,9 +149,11 @@ case object blastAPI {
     type Options = options.type
 
     val defaults = options := num_threads(1) :~: ∅
+
+    lazy val defaultsAsSeq = defaults.value mapToList optionValueToSeq
   }
 
-  type makeblastdb   = makeblastdb.type
+  type makeblastdb = makeblastdb.type
   case object makeblastdb extends AnyBlastCommand {
 
     case object arguments extends Record(in :&: input_type :&: dbtype :&: □)
@@ -124,8 +162,13 @@ case object blastAPI {
     type Options = options.type
 
     val defaults = options := title("") :~: ∅
+
+    lazy val defaultsAsSeq = defaults.value mapToList optionValueToSeq
   }
 
+  /*
+    ## Options
+  */
   case object db    extends BlastOption[File](f => f.getCanonicalPath.toString)
   case object query extends BlastOption[File](f => f.getCanonicalPath.toString)
   case object out   extends BlastOption[File](f => f.getCanonicalPath.toString)
@@ -145,24 +188,6 @@ case object blastAPI {
     case object minus extends Strands
     case object plus  extends Strands
   }
-
-
-  case class task[BC <: AnyBlastCommand]() extends BlastOption[BlastTask[BC]](bt => bt.taskName)
-
-  sealed abstract class BlastTask[BC <: AnyBlastCommand](val bc: BC, val taskName: String)
-  case object task {
-
-    case object blastp          extends BlastTask( blastAPI.blastp, "blastp" )
-    case object blastpFast      extends BlastTask( blastAPI.blastp, "blastp-fast" )
-    case object blastpShort     extends BlastTask( blastAPI.blastp, "blastp-short" )
-
-    case object blastx          extends BlastTask( blastAPI.blastx, "blastx" )
-    case object blastxFast      extends BlastTask( blastAPI.blastx, "blastx-fast" )
-
-    case object tblastn         extends BlastTask( blastAPI.tblastn, "tblastn" )
-    case object tblastnFast     extends BlastTask( blastAPI.tblastn, "tblastn-fast" )
-  }
-
   /*
     #### `makeblastdb`-specific options
   */
@@ -187,41 +212,27 @@ case object blastAPI {
   }
 
 
+  implicit def blastCommandValueOps[B <: AnyBlastCommand](cmdValueOf: ValueOf[B]): BlastCommandValueOps[B] =
+    BlastCommandValueOps(cmdValueOf.value)
+  import ohnosequences.cosas.ops.typeSets.MapToList
+  case class BlastCommandValueOps[B <: AnyBlastCommand](val cmdValue: B#Raw) extends AnyVal {
 
+    def cmd(implicit
+      cmd: B,
+      mapArgs: (optionValueToSeq.type MapToList B#Arguments#Raw) { type O = Seq[String] },
+      mapOpts: (optionValueToSeq.type MapToList B#Options#Raw) { type O = Seq[String] }
+    ): Seq[String] = {
 
+      val (argsSeqs, optsSeqs): (List[Seq[String]], List[Seq[String]]) = (
+        (cmdValue._1.value: B#Arguments#Raw) mapToList optionValueToSeq,
+        (cmdValue._2.value: B#Options#Raw) mapToList optionValueToSeq
+      )
 
+      (Seq(cmd.label) ++ argsSeqs.toSeq.flatten ++ optsSeqs.toSeq.flatten).filterNot(_.isEmpty)
+    }
 
+  }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  val buh = blastn(
-    blastn.arguments(
-      db(new File("/tmp/db"))       :~:
-      query(new File("/tmp/query")) :~:
-      out(new File("/tmp/out"))     :~: ∅
-    )               :~: 
-    blastn.defaults :~: ∅
-  )
 
 
 
