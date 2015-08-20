@@ -27,6 +27,8 @@ class apiTests extends org.scalatest.FunSuite {
 
     println(uhoh)
 
+    assert { blastnCmd.cmd === Seq("blastn", "-db", "/tmp/buh", "-query", "/tmp/query", "-out", "/tmp/blastout") ++ blastn.defaultsAsSeq }
+
     // assert(
     //   uh.toSeq.mkString(" ") ===
     //   "blastn -db /tmp/buh -query /tmp/query -out /tmp/blastout -outfmt '6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore'"
