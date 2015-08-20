@@ -1,35 +1,51 @@
 package ohnosequencesBundles.statika
 
 import ohnosequences.statika._, bundles._, instructions._
+import java.io.File
 
 
+abstract class Blast (version: String) extends Bundle() {
+
+    val blastDistribution = "-x64-linux"
+    val blastPath = s"ncbi-blast-${version}+"
+    val blastBinPath = new File(s"${blastPath}/bin/").getAbsolutePath
+    val usrbin = "/usr/bin/"
+
+    val commands: Set[String] = Set(
+      "blast_formatter",
+      "blastdb_aliastool",
+      "blastdbcheck",
+      "blastdbcmd",
+      "blastn",
+      "blastp",
+      "blastx",
+      "convert2blastmask",
+      "deltablast",
+      "dustmasker",
+      "makeblastdb",
+      "makembindex",
+      "makeprofiledb",
+      "psiblast",
+      "rpsblast",
+      "rpstblastn",
+      "segmasker",
+      "tblastn",
+      "tblastx",
+      "windowmasker"
+      )
 
 
-case object blast {
+    def linkCommand(cmd: String): Results =
+        Seq("ln", "-s", s"${blastBinPath}", s"${usrbin}/${cmd}")
 
-
-  case object Blast extends Bundle() {
 
     def install: Results = {
 
-      import ammonite.ops._
-      val wd = cwd
-
-      val getFiles =
-        Seq("aws", "s3", "cp", "s3://resources.ohnosequences.com/blast/ncbi-blast-2.2.30+-x64-linux.tar.gz", "./") -&- Seq("tar","-xvf", "ncbi-blast-2.2.30+-x64-linux.tar.gz")
-
-      val blastBinPath = wd/"ncbi-blast-2.2.30+"/"bin"
-      val usrbin = root/"usr"/"bin"
-
-      ls! blastBinPath | { x => ln.s(blastBinPath/x.last, usrbin/x.last) }
-
-      if ( exists(usrbin/"blastn") )
-        success(bundleFullName + " is installed")
-      else
-        failure("Something went wrong with the linking :(")
-
+        Seq("aws", "s3", "cp", s"s3://resources.ohnosequences.com/blast/${version}/${blastPath}${blastDistribution}.tar.gz", "./") -&- Seq("tar","-xvf", s"${blastPath}${blastDistribution}.tar.gz") ->-
+        commands.foldLeft[Results](
+            Seq("echo", "linking blast binaries")
+          ){ (acc, cmd) => acc ->- linkCommand(cmd) } ->-
+          success(s"${bundleName} is installed")
     }
-
-  }
 
 }
