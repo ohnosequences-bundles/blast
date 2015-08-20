@@ -13,16 +13,18 @@ class apiTests extends org.scalatest.FunSuite {
 
   test("command generation") {
 
-    val uh =
-      blastn withOptions
-        db(dbFile)        :~:
-        query(queryFile)  :~:
-        out(outFile)      :~:
-        outfmt(format.TSV, defaultOutputFields) :~: ∅
+    val blastnCmd = blastn((
+      blastn.arguments(
+        db(dbFile)       :~:
+        query(queryFile) :~:
+        out(outFile)     :~: ∅
+      ),
+      blastn.defaults
+    ))
 
-    assert(
-      uh.toSeq.mkString(" ") ===
-      "blastn -db /tmp/buh -query /tmp/query -out /tmp/blastout -outfmt '6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore'"
-    )
+    assert {
+      blastnCmd.cmd === Seq("blastn", "-db", "/tmp/buh", "-query", "/tmp/query", "-out", "/tmp/blastout") ++
+        blastn.defaultsAsSeq
+    }
   }
 }
