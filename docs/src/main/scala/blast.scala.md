@@ -1,3 +1,5 @@
+
+```scala
 package ohnosequencesBundles.statika
 
 import ohnosequences.statika._, bundles._, instructions._
@@ -59,3 +61,12 @@ abstract class Blast(val version: String) extends Bundle { blast =>
     linkBinaries.foldLeft[Results](Seq("echo", "linking BLAST binaries"))( (acc, cmd) => acc ->- cmd ) ->-
     success(s"${bundleFullName} installed")
 }
+
+```
+
+
+
+
+[test/scala/apiTests.scala]: ../../test/scala/apiTests.scala.md
+[main/scala/blast.scala]: blast.scala.md
+[main/scala/blastAPI.scala]: blastAPI.scala.md
