@@ -10,8 +10,8 @@ case object blastAPI {
 
     lazy val label: String = toString
 
-    type Arguments  <: AnyRecord { type Fields <: AnyFields.withBound[AnyBlastOption] }
-    type Options    <: AnyRecord { type Fields <: AnyFields.withBound[AnyBlastOption] }
+    type Arguments  <: AnyRecord { type PropertySet <: AnyPropertySet.withBound[AnyBlastOption] }
+    type Options    <: AnyRecord { type PropertySet <: AnyPropertySet.withBound[AnyBlastOption] }
 
     val defaults: ValueOf[Options]
     val defaultsAsSeq: Seq[String]
