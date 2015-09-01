@@ -1,7 +1,7 @@
 Nice.scalaProject
 
 name := "blast"
-organization := "ohnosequencesBundles"
+organization := "ohnosequences-bundles"
 description := "A bundle for blast tool"
 
 
