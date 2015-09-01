@@ -5,8 +5,6 @@ import java.io.File
 
 abstract class Blast(val version: String) extends Bundle { blast =>
 
-  private def workingDir: String = (new File("")).getCanonicalPath().toString
-
   // 2.2.30+
   val tarball = s"ncbi-blast-${blast.version}-x64-linux.tar.gz"
   val folder  = s"ncbi-blast-${blast.version}"
@@ -36,26 +34,24 @@ abstract class Blast(val version: String) extends Bundle { blast =>
     "windowmasker"
   )
 
-  lazy val getTarball = Seq(
-    "wget",
-    s"https://s3-eu-west-1.amazonaws.com/resources.ohnosequences.com/blast/${blast.version}/${blast.tarball}"
-  )
-
-  lazy val extractTarball = Seq(
-    "tar",
-    "-xvf",
-    blast.tarball
-  )
-
-  lazy val linkBinaries = binaries map { cmd => Seq(
-      "ln",
-      "-s",
-      s"${workingDir}/${blast.folder}/bin/${cmd}",
-      s"/usr/bin/${cmd}"
+  def instructions: AnyInstructions = {
+    lazy val getTarball = cmd("wget")(
+      s"https://s3-eu-west-1.amazonaws.com/resources.ohnosequences.com/blast/${blast.version}/${blast.tarball}"
     )
-  }
 
-  def install: Results = getTarball ->- extractTarball ->-
-    linkBinaries.foldLeft[Results](Seq("echo", "linking BLAST binaries"))( (acc, cmd) => acc ->- cmd ) ->-
-    success(s"${bundleFullName} installed")
+    lazy val extractTarball = cmd("tar")("-xvf", blast.tarball)
+
+    lazy val linkBinaries = binaries map { name =>
+      cmd("ln")(
+        "-s",
+        new File(s"/${blast.folder}/bin/${name}").getCanonicalPath,
+        s"/usr/bin/${name}"
+      )
+    }
+
+    getTarball -&-
+    extractTarball -&-
+    linkBinaries.foldLeft[AnyInstructions](Seq("echo", "linking BLAST binaries"))( _ -&- _ ) -&-
+    say(s"${bundleFullName} is installed")
+  }
 }
