@@ -5,7 +5,7 @@ import java.io.File
 
 abstract class Blast(val version: String) extends Bundle { blast =>
 
-  // 2.2.30+
+  // 2.2.31
   val tarball = s"ncbi-blast-${blast.version}-x64-linux.tar.gz"
   val folder  = s"ncbi-blast-${blast.version}"
 
@@ -35,6 +35,7 @@ abstract class Blast(val version: String) extends Bundle { blast =>
   )
 
   def instructions: AnyInstructions = {
+
     lazy val getTarball = cmd("wget")(
       s"https://s3-eu-west-1.amazonaws.com/resources.ohnosequences.com/blast/${blast.version}/${blast.tarball}"
     )
@@ -44,7 +45,7 @@ abstract class Blast(val version: String) extends Bundle { blast =>
     lazy val linkBinaries = binaries map { name =>
       cmd("ln")(
         "-s",
-        new File(s"/${blast.folder}/bin/${name}").getCanonicalPath,
+        new File(s"${blast.folder}/bin/${name}").getCanonicalPath,
         s"/usr/bin/${name}"
       )
     }
