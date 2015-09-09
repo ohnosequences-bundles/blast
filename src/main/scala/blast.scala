@@ -3,7 +3,7 @@ package ohnosequencesBundles.statika
 import ohnosequences.statika._, bundles._, instructions._
 import java.io.File
 
-abstract class Blast(val version: String) extends Bundle { blast =>
+abstract class Blast(val version: String) extends Bundle(compressinglibs) { blast =>
 
   // 2.2.31
   val tarball = s"ncbi-blast-${blast.version}-x64-linux.tar.gz"
