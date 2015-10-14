@@ -5,13 +5,11 @@ package ohnosequencesBundles.statika
 import ohnosequences.statika._, bundles._, instructions._
 import java.io.File
 
-abstract class Blast(val version: String) extends Bundle { blast =>
+abstract class Blast(val version: String) extends Bundle(compressinglibs) { blast =>
 
-  private def workingDir: String = (new File("")).getCanonicalPath().toString
-
-  // 2.2.30+
+  // 2.2.31
   val tarball = s"ncbi-blast-${blast.version}-x64-linux.tar.gz"
-  val folder  = s"ncbi-blast-${blast.version}"
+  val folder  = s"ncbi-blast-${blast.version}+"
 
   val binaries = List(
     "blastdb_aliastool",
@@ -38,28 +36,27 @@ abstract class Blast(val version: String) extends Bundle { blast =>
     "windowmasker"
   )
 
-  lazy val getTarball = Seq(
-    "wget",
+  lazy val getTarball = cmd("wget")(
     s"https://s3-eu-west-1.amazonaws.com/resources.ohnosequences.com/blast/${blast.version}/${blast.tarball}"
   )
 
-  lazy val extractTarball = Seq(
-    "tar",
-    "-xvf",
-    blast.tarball
-  )
+  lazy val extractTarball = cmd("tar")("-xvf", blast.tarball)
 
-  lazy val linkBinaries = binaries map { cmd => Seq(
-      "ln",
+  lazy val linkBinaries = binaries map { name =>
+    cmd("ln")(
       "-s",
-      s"${workingDir}/${blast.folder}/bin/${cmd}",
-      s"/usr/bin/${cmd}"
+      new File(s"${blast.folder}/bin/${name}").getCanonicalPath,
+      s"/usr/bin/${name}"
     )
   }
 
-  def install: Results = getTarball ->- extractTarball ->-
-    linkBinaries.foldLeft[Results](Seq("echo", "linking BLAST binaries"))( (acc, cmd) => acc ->- cmd ) ->-
-    success(s"${bundleFullName} installed")
+  final def instructions: AnyInstructions = {
+
+    getTarball -&-
+    extractTarball -&-
+    linkBinaries.foldLeft[AnyInstructions](Seq("echo", "linking BLAST binaries"))( _ -&- _ ) -&-
+    say(s"${bundleFullName} is installed")
+  }
 }
 
 ```
@@ -67,6 +64,4 @@ abstract class Blast(val version: String) extends Bundle { blast =>
 
 
 
-[test/scala/apiTests.scala]: ../../test/scala/apiTests.scala.md
 [main/scala/blast.scala]: blast.scala.md
-[main/scala/blastAPI.scala]: blastAPI.scala.md
