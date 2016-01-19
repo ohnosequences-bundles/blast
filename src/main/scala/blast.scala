@@ -1,6 +1,6 @@
 package ohnosequencesBundles.statika
 
-import ohnosequences.statika._, bundles._, instructions._
+import ohnosequences.statika._
 import java.io.File
 
 abstract class Blast(val version: String) extends Bundle(compressinglibs) { blast =>
